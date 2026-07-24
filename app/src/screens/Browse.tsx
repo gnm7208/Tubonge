@@ -34,7 +34,7 @@ export function Browse({ openProfile, startBooking }: { openProfile: (t: Therapi
     if (sort === "price-low") r = [...r].sort((a, b) => a.rate - b.rate);
     if (sort === "price-high") r = [...r].sort((a, b) => b.rate - a.rate);
     return r;
-  }, [q, spec, lang, sort]);
+  }, [therapists, q, spec, lang, sort]);
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-10">

@@ -1,15 +1,15 @@
 import { isToday, isTomorrow, format } from "date-fns";
 import { supabase } from "@/lib/supabase";
-import type { Therapist } from "@/data/mock";
+import type { Therapist, Slot } from "@/data/mock";
 
 const ACCENTS = ["#d97757", "#6a9bcc", "#788c5d"];
 
-function initialsOf(name: string) {
+export function initialsOf(name: string) {
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
-function accentFor(id: string) {
+export function accentFor(id: string) {
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
   return ACCENTS[hash % ACCENTS.length];
@@ -31,7 +31,7 @@ type TherapistQueryRow = {
   session_rate_kes: number;
   title: string;
   profiles: { full_name: string } | null;
-  availability_slots: { starts_at: string; status: string }[];
+  availability_slots: { id: string; starts_at: string; status: string }[];
   reviews: { rating: number }[];
 };
 
@@ -40,11 +40,11 @@ function mapRow(row: TherapistQueryRow): Therapist {
   const reviewCount = row.reviews.length;
   const rating = reviewCount ? row.reviews.reduce((s, r) => s + r.rating, 0) / reviewCount : 0;
   const now = new Date();
-  const nextSlots = row.availability_slots
+  const nextSlots: Slot[] = row.availability_slots
     .filter((s) => s.status === "open" && new Date(s.starts_at) > now)
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
     .slice(0, 3)
-    .map((s) => slotLabel(s.starts_at));
+    .map((s) => ({ id: s.id, label: slotLabel(s.starts_at) }));
 
   return {
     id: row.id,
@@ -68,7 +68,7 @@ export async function fetchApprovedTherapists(limit?: number): Promise<Therapist
   let query = supabase
     .from("therapists")
     .select(
-      "id, bio, specialties, languages, years_experience, session_rate_kes, title, profiles(full_name), availability_slots(starts_at, status), reviews(rating)"
+      "id, bio, specialties, languages, years_experience, session_rate_kes, title, profiles(full_name), availability_slots(id, starts_at, status), reviews(rating)"
     )
     .eq("verification_status", "approved")
     .order("created_at", { ascending: false });

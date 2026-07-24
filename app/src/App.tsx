@@ -10,23 +10,34 @@ import { AdminDashboard } from "@/screens/AdminDashboard";
 import { SessionRoom } from "@/screens/SessionRoom";
 import { SignUp } from "@/screens/SignUp";
 import { Login } from "@/screens/Login";
+import { PaymentReturn } from "@/screens/PaymentReturn";
 import { Header } from "@/components/Header";
-import type { Therapist } from "@/data/mock";
+import type { Therapist, Slot } from "@/data/mock";
 
-export type View = "landing" | "browse" | "profile" | "booking" | "dashboard" | "session" | "login" | "signup";
+export type View = "landing" | "browse" | "profile" | "booking" | "dashboard" | "session" | "login" | "signup" | "payment-return";
+
+function initialOrderTrackingId(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("OrderTrackingId");
+}
 
 function AppShell() {
-  const [view, setView] = useState<View>("landing");
+  const returningOrderTrackingId = useState(initialOrderTrackingId)[0];
+  const [view, setView] = useState<View>(returningOrderTrackingId ? "payment-return" : "landing");
   const [therapist, setTherapist] = useState<Therapist | null>(null);
-  const [slot, setSlot] = useState<string>("");
+  const [slot, setSlot] = useState<Slot | null>(null);
   const { loading, profile } = useAuth();
 
-  const go = (v: View) => { window.scrollTo(0, 0); setView(v); };
+  const go = (v: View) => {
+    if (window.location.search) window.history.replaceState({}, "", window.location.pathname);
+    window.scrollTo(0, 0);
+    setView(v);
+  };
 
   const openProfile = (t: Therapist) => { setTherapist(t); go("profile"); };
-  const startBooking = (t: Therapist, s?: string) => { setTherapist(t); if (s) setSlot(s); go("booking"); };
+  const startBooking = (t: Therapist, s?: Slot) => { setTherapist(t); setSlot(s ?? null); go("booking"); };
 
-  const showHeader = view !== "landing" && view !== "session" && view !== "login" && view !== "signup";
+  const showHeader = view !== "landing" && view !== "session" && view !== "login" && view !== "signup" && view !== "payment-return";
 
   return (
     <div className="min-h-screen bg-background text-foreground font-body">
@@ -53,7 +64,7 @@ function AppShell() {
         ) : profile.role === "admin" ? (
           <AdminDashboard />
         ) : (
-          <ClientDashboard go={go} therapist={therapist} slot={slot} join={() => go("session")} />
+          <ClientDashboard go={go} join={(t) => { setTherapist(t); go("session"); }} />
         )
       )}
       {view === "session" && therapist && (
@@ -61,6 +72,9 @@ function AppShell() {
       )}
       {view === "login" && <Login go={go} />}
       {view === "signup" && <SignUp go={go} />}
+      {view === "payment-return" && returningOrderTrackingId && (
+        <PaymentReturn orderTrackingId={returningOrderTrackingId} go={go} />
+      )}
     </div>
   );
 }

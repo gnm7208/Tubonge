@@ -1,4 +1,4 @@
-import type { Therapist } from "@/data/mock";
+import type { Therapist, Slot } from "@/data/mock";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -10,7 +10,7 @@ const REVIEWS = [
   { name: "Aisha O.", text: "Helped me through a really hard season. Highly recommend.", stars: 5 },
 ];
 
-export function TherapistProfile({ therapist: t, onBook, back }: { therapist: Therapist; onBook: (slot: string) => void; back: () => void }) {
+export function TherapistProfile({ therapist: t, onBook, back }: { therapist: Therapist; onBook: (slot: Slot) => void; back: () => void }) {
   return (
     <div className="mx-auto max-w-6xl px-5 py-8">
       <Button variant="ghost" onClick={back} className="mb-4 font-heading text-muted-foreground">
@@ -88,8 +88,8 @@ export function TherapistProfile({ therapist: t, onBook, back }: { therapist: Th
             ) : (
               <div className="mt-3 space-y-2">
                 {t.nextSlots.map((s) => (
-                  <button key={s} onClick={() => onBook(s)} className="flex w-full items-center justify-between rounded-xl border border-border bg-[#faf9f5] px-4 py-3 text-left font-heading text-sm transition-colors hover:border-[#d97757] hover:bg-[#d97757]/5">
-                    <span>{s}</span>
+                  <button key={s.id} onClick={() => onBook(s)} className="flex w-full items-center justify-between rounded-xl border border-border bg-[#faf9f5] px-4 py-3 text-left font-heading text-sm transition-colors hover:border-[#d97757] hover:bg-[#d97757]/5">
+                    <span>{s.label}</span>
                     <span className="text-[#d97757]">Select →</span>
                   </button>
                 ))}

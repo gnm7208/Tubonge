@@ -135,8 +135,8 @@ export function AdminDashboard() {
 
       <div className="mt-6 flex items-center gap-2 rounded-xl bg-[#e8e6dc]/60 p-4 text-sm text-muted-foreground">
         <ShieldCheck className="h-4 w-4 shrink-0 text-[#788c5d]" />
-        Approving makes a therapist's <code className="font-heading">verification_status</code> "approved" in the
-        database. Public browsing still shows mock therapist data until Phase 2 wires real listings.
+        Approving sets a therapist's <code className="font-heading">verification_status</code> to "approved" and makes
+        them visible immediately on the public Browse page and Landing.
       </div>
     </div>
   );
