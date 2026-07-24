@@ -18,8 +18,14 @@ export function TherapistCard({ t, onView, onBook }: { t: Therapist; onView: () 
           <p className="text-sm text-muted-foreground">{t.title}</p>
           <div className="mt-1 flex items-center gap-1 text-sm">
             <Star className="h-3.5 w-3.5 fill-[#d97757] text-[#d97757]" />
-            <span className="font-heading font-medium">{t.rating}</span>
-            <span className="text-muted-foreground">({t.reviews})</span>
+            {t.reviews > 0 ? (
+              <>
+                <span className="font-heading font-medium">{t.rating.toFixed(1)}</span>
+                <span className="text-muted-foreground">({t.reviews})</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">New</span>
+            )}
           </div>
         </div>
       </div>

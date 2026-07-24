@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
-import { THERAPISTS, ALL_SPECIALTIES, ALL_LANGUAGES, type Therapist } from "@/data/mock";
+import { useState, useMemo, useEffect } from "react";
+import { ALL_SPECIALTIES, ALL_LANGUAGES, type Therapist } from "@/data/mock";
+import { fetchApprovedTherapists } from "@/lib/therapists";
 import { TherapistCard } from "@/components/TherapistCard";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -7,13 +8,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, SlidersHorizontal } from "lucide-react";
 
 export function Browse({ openProfile, startBooking }: { openProfile: (t: Therapist) => void; startBooking: (t: Therapist) => void }) {
+  const [therapists, setTherapists] = useState<Therapist[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [spec, setSpec] = useState<string>("all");
   const [lang, setLang] = useState<string>("all");
   const [sort, setSort] = useState<string>("rating");
 
+  useEffect(() => {
+    fetchApprovedTherapists()
+      .then(setTherapists)
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
   const results = useMemo(() => {
-    let r = THERAPISTS.filter((t) => {
+    let r = therapists.filter((t) => {
       const matchQ = q === "" || t.name.toLowerCase().includes(q.toLowerCase()) || t.specialties.join(" ").toLowerCase().includes(q.toLowerCase());
       const matchSpec = spec === "all" || t.specialties.includes(spec);
       const matchLang = lang === "all" || t.languages.includes(lang);
@@ -28,7 +39,7 @@ export function Browse({ openProfile, startBooking }: { openProfile: (t: Therapi
   return (
     <div className="mx-auto max-w-6xl px-5 py-10">
       <h1 className="font-heading text-3xl font-semibold tracking-tight">Find your therapist</h1>
-      <p className="mt-1 text-muted-foreground">{THERAPISTS.length} licensed professionals available online.</p>
+      <p className="mt-1 text-muted-foreground">{therapists.length} licensed professionals available online.</p>
 
       {/* Filters */}
       <div className="mt-6 rounded-2xl border border-border bg-card p-4">
@@ -66,13 +77,25 @@ export function Browse({ openProfile, startBooking }: { openProfile: (t: Therapi
         <Badge variant="secondary" className="border-none bg-[#e8e6dc] font-heading font-normal text-[#141413] hover:bg-[#e8e6dc]">{results.length} results</Badge>
       </div>
 
-      <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {results.map((t) => (
-          <TherapistCard key={t.id} t={t} onView={() => openProfile(t)} onBook={() => startBooking(t)} />
-        ))}
-      </div>
-      {results.length === 0 && (
-        <div className="mt-16 text-center text-muted-foreground">No therapists match those filters. Try widening your search.</div>
+      {loading ? (
+        <div className="mt-16 text-center text-muted-foreground">Loading therapists…</div>
+      ) : error ? (
+        <div className="mt-16 text-center text-destructive">Couldn't load therapists: {error}</div>
+      ) : (
+        <>
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {results.map((t) => (
+              <TherapistCard key={t.id} t={t} onView={() => openProfile(t)} onBook={() => startBooking(t)} />
+            ))}
+          </div>
+          {results.length === 0 && (
+            <div className="mt-16 text-center text-muted-foreground">
+              {therapists.length === 0
+                ? "No verified therapists yet — check back soon."
+                : "No therapists match those filters. Try widening your search."}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -35,7 +35,14 @@ export function TherapistProfile({ therapist: t, onBook, back }: { therapist: Th
               </div>
               <p className="mt-0.5 text-muted-foreground">{t.title}</p>
               <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-                <span className="flex items-center gap-1"><Star className="h-4 w-4 fill-[#d97757] text-[#d97757]" /><span className="font-heading font-medium">{t.rating}</span> ({t.reviews} reviews)</span>
+                <span className="flex items-center gap-1">
+                  <Star className="h-4 w-4 fill-[#d97757] text-[#d97757]" />
+                  {t.reviews > 0 ? (
+                    <><span className="font-heading font-medium">{t.rating.toFixed(1)}</span> ({t.reviews} reviews)</>
+                  ) : (
+                    <span className="font-heading font-medium">New on Tubonge</span>
+                  )}
+                </span>
                 <span className="flex items-center gap-1 text-muted-foreground"><GraduationCap className="h-4 w-4" /> {t.years} years experience</span>
                 <span className="flex items-center gap-1 text-muted-foreground"><Languages className="h-4 w-4" /> {t.languages.join(", ")}</span>
               </div>
@@ -76,15 +83,19 @@ export function TherapistProfile({ therapist: t, onBook, back }: { therapist: Th
               <span className="text-sm text-muted-foreground">/ 50 min</span>
             </div>
             <p className="mt-4 flex items-center gap-1.5 font-heading text-sm font-medium"><Clock className="h-4 w-4 text-[#d97757]" /> Next availability</p>
-            <div className="mt-3 space-y-2">
-              {t.nextSlots.map((s) => (
-                <button key={s} onClick={() => onBook(s)} className="flex w-full items-center justify-between rounded-xl border border-border bg-[#faf9f5] px-4 py-3 text-left font-heading text-sm transition-colors hover:border-[#d97757] hover:bg-[#d97757]/5">
-                  <span>{s}</span>
-                  <span className="text-[#d97757]">Select →</span>
-                </button>
-              ))}
-            </div>
-            <Button onClick={() => onBook(t.nextSlots[0])} className="mt-4 w-full bg-[#d97757] font-heading text-white hover:bg-[#c9663f]">
+            {t.nextSlots.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">No open slots right now — check back soon.</p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {t.nextSlots.map((s) => (
+                  <button key={s} onClick={() => onBook(s)} className="flex w-full items-center justify-between rounded-xl border border-border bg-[#faf9f5] px-4 py-3 text-left font-heading text-sm transition-colors hover:border-[#d97757] hover:bg-[#d97757]/5">
+                    <span>{s}</span>
+                    <span className="text-[#d97757]">Select →</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <Button onClick={() => onBook(t.nextSlots[0])} disabled={t.nextSlots.length === 0} className="mt-4 w-full bg-[#d97757] font-heading text-white hover:bg-[#c9663f]">
               Book a session
             </Button>
             <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">

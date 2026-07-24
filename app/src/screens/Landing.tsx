@@ -1,13 +1,21 @@
+import { useEffect, useState } from "react";
 import type { View } from "@/App";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { THERAPISTS, type Therapist } from "@/data/mock";
+import type { Therapist } from "@/data/mock";
+import { fetchApprovedTherapists } from "@/lib/therapists";
 import { TherapistCard } from "@/components/TherapistCard";
 import { useAuth } from "@/lib/auth";
 import { MessageCircleHeart, ShieldCheck, Video, Smartphone, Star, ArrowRight, HeartHandshake } from "lucide-react";
 
 export function Landing({ go, openProfile }: { go: (v: View) => void; openProfile: (t: Therapist) => void }) {
   const { profile, signOut } = useAuth();
+  const [featured, setFeatured] = useState<Therapist[]>([]);
+
+  useEffect(() => {
+    fetchApprovedTherapists(3).then(setFeatured).catch(() => setFeatured([]));
+  }, []);
+
   return (
     <div>
       {/* Nav */}
@@ -118,19 +126,21 @@ export function Landing({ go, openProfile }: { go: (v: View) => void; openProfil
       </section>
 
       {/* Featured therapists */}
-      <section className="mx-auto max-w-6xl px-5 py-14">
-        <div className="flex items-end justify-between">
-          <h2 className="font-heading text-2xl font-semibold md:text-3xl">Meet our therapists</h2>
-          <Button variant="ghost" onClick={() => go("browse")} className="font-heading text-[#d97757]">
-            View all <ArrowRight className="ml-1 h-4 w-4" />
-          </Button>
-        </div>
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {THERAPISTS.slice(0, 3).map((t) => (
-            <TherapistCard key={t.id} t={t} onView={() => openProfile(t)} onBook={() => openProfile(t)} />
-          ))}
-        </div>
-      </section>
+      {featured.length > 0 && (
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <div className="flex items-end justify-between">
+            <h2 className="font-heading text-2xl font-semibold md:text-3xl">Meet our therapists</h2>
+            <Button variant="ghost" onClick={() => go("browse")} className="font-heading text-[#d97757]">
+              View all <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {featured.map((t) => (
+              <TherapistCard key={t.id} t={t} onView={() => openProfile(t)} onBook={() => openProfile(t)} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Trust strip */}
       <section className="border-t border-border bg-[#141413] text-white">

@@ -26,6 +26,7 @@ export type TherapistRow = {
   license_number: string;
   license_body: string;
   verification_status: VerificationStatus;
+  title: string;
   bio: string | null;
   specialties: string[];
   languages: string[];

@@ -1,14 +1,122 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
-import type { TherapistRow } from "@/lib/database.types";
+import type { TherapistRow, AvailabilitySlot } from "@/lib/database.types";
+import { slotLabel } from "@/lib/therapists";
 import { ALL_SPECIALTIES, ALL_LANGUAGES } from "@/data/mock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { ShieldCheck, Clock, CheckCircle2, XCircle, FileText, Upload } from "lucide-react";
+import { ShieldCheck, Clock, CheckCircle2, XCircle, FileText, Upload, Plus, Trash2, CalendarPlus } from "lucide-react";
+
+const SESSION_MINUTES = 50;
+
+function AvailabilityManager({ therapistId }: { therapistId: string }) {
+  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [when, setWhen] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("availability_slots")
+      .select("*")
+      .eq("therapist_id", therapistId)
+      .eq("status", "open")
+      .gt("starts_at", new Date().toISOString())
+      .order("starts_at", { ascending: true });
+    setSlots((data as AvailabilitySlot[]) ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+  }, [therapistId]);
+
+  const addSlot = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!when) return;
+    setBusy(true);
+    setError(null);
+    const startsAt = new Date(when);
+    const endsAt = new Date(startsAt.getTime() + SESSION_MINUTES * 60_000);
+    const { error } = await supabase.from("availability_slots").insert({
+      therapist_id: therapistId,
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
+    });
+    setBusy(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setWhen("");
+    await load();
+  };
+
+  const removeSlot = async (id: string) => {
+    setBusy(true);
+    await supabase.from("availability_slots").delete().eq("id", id);
+    setBusy(false);
+    await load();
+  };
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-card p-6">
+      <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+        <CalendarPlus className="h-5 w-5 text-[#6a9bcc]" /> Availability
+      </h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Add open slots ({SESSION_MINUTES} min each) for clients to book.
+      </p>
+
+      <form onSubmit={addSlot} className="mt-4 flex flex-wrap items-end gap-3">
+        <div>
+          <Label htmlFor="slotWhen" className="font-heading text-sm">Date &amp; time</Label>
+          <Input
+            id="slotWhen"
+            type="datetime-local"
+            required
+            value={when}
+            onChange={(e) => setWhen(e.target.value)}
+            className="mt-1.5 font-body"
+          />
+        </div>
+        <Button type="submit" disabled={busy} className="bg-[#6a9bcc] font-heading text-white hover:bg-[#5b89b8]">
+          <Plus className="mr-1.5 h-4 w-4" /> Add slot
+        </Button>
+      </form>
+      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+
+      <div className="mt-5 space-y-2">
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : slots.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No upcoming open slots yet.</p>
+        ) : (
+          slots.map((s) => (
+            <div key={s.id} className="flex items-center justify-between rounded-xl border border-border bg-[#faf9f5] px-4 py-2.5">
+              <span className="font-heading text-sm">{slotLabel(s.starts_at)}</span>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => removeSlot(s.id)}
+                className="text-muted-foreground hover:text-destructive"
+                aria-label="Remove slot"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
 
 function toggle(list: string[], item: string) {
   return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
@@ -27,6 +135,7 @@ export function TherapistDashboard() {
 
   const [licenseNumber, setLicenseNumber] = useState("");
   const [licenseBody, setLicenseBody] = useState("Counsellors and Psychologists Board (CPB)");
+  const [title, setTitle] = useState("");
   const [bio, setBio] = useState("");
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
@@ -49,6 +158,7 @@ export function TherapistDashboard() {
           setRow(data);
           setLicenseNumber(data.license_number);
           setLicenseBody(data.license_body);
+          setTitle(data.title ?? "");
           setBio(data.bio ?? "");
           setSpecialties(data.specialties);
           setLanguages(data.languages);
@@ -90,6 +200,7 @@ export function TherapistDashboard() {
           profile_id: profile.id,
           license_number: licenseNumber,
           license_body: licenseBody,
+          title,
           bio,
           specialties,
           languages,
@@ -145,6 +256,11 @@ export function TherapistDashboard() {
         <h2 className="font-heading text-lg font-semibold">
           {row ? "Update your profile" : "Complete your profile"}
         </h2>
+
+        <div>
+          <Label htmlFor="title" className="font-heading text-sm">Professional title</Label>
+          <Input id="title" required placeholder="e.g. Clinical Psychologist" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1.5 font-body" />
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -237,6 +353,8 @@ export function TherapistDashboard() {
           {saving ? "Saving…" : row ? "Save changes" : "Submit for verification"}
         </Button>
       </form>
+
+      {row && <AvailabilityManager therapistId={row.id} />}
 
       <div className="mt-6 flex items-center gap-2 rounded-xl bg-[#e8e6dc]/60 p-4 text-sm text-muted-foreground">
         <ShieldCheck className="h-4 w-4 shrink-0 text-[#788c5d]" />
