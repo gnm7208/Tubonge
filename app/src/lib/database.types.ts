@@ -110,44 +110,5 @@ export type PayoutRow = {
   paid_at: string | null;
 };
 
-type TableDef<Row, Insert, Update = Partial<Insert>> = {
-  Row: Row;
-  Insert: Insert;
-  Update: Update;
-};
-
-export type Database = {
-  public: {
-    Tables: {
-      profiles: TableDef<
-        Profile,
-        Pick<Profile, "id" | "full_name"> & Partial<Pick<Profile, "role" | "phone" | "email" | "avatar_url">>
-      >;
-      therapists: TableDef<
-        TherapistRow,
-        Pick<TherapistRow, "profile_id" | "license_number" | "session_rate_kes"> &
-          Partial<Omit<TherapistRow, "id" | "profile_id" | "license_number" | "session_rate_kes" | "created_at" | "updated_at">>
-      >;
-      availability_slots: TableDef<
-        AvailabilitySlot,
-        Pick<AvailabilitySlot, "therapist_id" | "starts_at" | "ends_at"> & Partial<Pick<AvailabilitySlot, "status">>
-      >;
-      bookings: TableDef<
-        BookingRow,
-        Pick<BookingRow, "client_id" | "therapist_id" | "slot_id" | "amount_kes"> & Partial<Pick<BookingRow, "status">>
-      >;
-      payments: TableDef<
-        PaymentRow,
-        Pick<PaymentRow, "booking_id" | "method" | "amount_kes"> &
-          Partial<Pick<PaymentRow, "provider" | "provider_ref" | "receipt" | "status" | "raw_callback">>
-      >;
-      sessions: TableDef<SessionRow, Pick<SessionRow, "booking_id"> & Partial<Omit<SessionRow, "id" | "booking_id" | "created_at" | "updated_at">>>;
-      messages: TableDef<MessageRow, Pick<MessageRow, "booking_id" | "sender_id" | "body">>;
-      reviews: TableDef<
-        ReviewRow,
-        Pick<ReviewRow, "booking_id" | "client_id" | "therapist_id" | "rating"> & Partial<Pick<ReviewRow, "comment">>
-      >;
-      payouts: TableDef<PayoutRow, Pick<PayoutRow, "therapist_id" | "amount_kes"> & Partial<Pick<PayoutRow, "status">>>;
-    };
-  };
-};
+// Note: these Row types are used for local casting/typing (e.g. `data as TherapistRow`),
+// not fed into `createClient<Database>()` — see src/lib/supabase.ts for why.
