@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 48 33% 97%;
+    --foreground: 60 3% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 60 3% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 60 3% 8%;
+    --primary: 14 63% 60%;
+    --primary-foreground: 48 33% 97%;
+    --secondary: 50 24% 89%;
+    --secondary-foreground: 60 3% 8%;
+    --muted: 50 20% 92%;
+    --muted-foreground: 48 5% 42%;
+    --accent: 50 24% 89%;
+    --accent-foreground: 60 3% 8%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 48 14% 84%;
+    --input: 48 14% 84%;
+    --ring: 14 63% 60%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Lora', Georgia, serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', Arial, sans-serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+.font-heading { font-family: 'Poppins', Arial, sans-serif; }
+.font-body { font-family: 'Lora', Georgia, serif; }
