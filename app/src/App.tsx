@@ -16,10 +16,11 @@ import { Terms } from "@/screens/Terms";
 import { MatchQuiz, type QuizAnswers } from "@/screens/MatchQuiz";
 import { MatchResults } from "@/screens/MatchResults";
 import { CheckIn } from "@/screens/CheckIn";
+import { Groups } from "@/screens/Groups";
 import { Header } from "@/components/Header";
 import type { Therapist, Slot } from "@/data/mock";
 
-export type View = "landing" | "browse" | "profile" | "booking" | "dashboard" | "session" | "login" | "signup" | "payment-return" | "privacy" | "terms" | "match-quiz" | "match-results" | "check-in";
+export type View = "landing" | "browse" | "profile" | "booking" | "dashboard" | "session" | "login" | "signup" | "payment-return" | "privacy" | "terms" | "match-quiz" | "match-results" | "check-in" | "groups";
 
 function initialOrderTrackingId(): string | null {
   const params = new URLSearchParams(window.location.search);
@@ -32,6 +33,7 @@ function AppShell() {
   const [therapist, setTherapist] = useState<Therapist | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [sessionBookingId, setSessionBookingId] = useState<string | null>(null);
+  const [sessionGroupId, setSessionGroupId] = useState<string | null>(null);
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswers | null>(null);
   const { loading, profile } = useAuth();
 
@@ -43,7 +45,8 @@ function AppShell() {
 
   const openProfile = (t: Therapist) => { setTherapist(t); go("profile"); };
   const startBooking = (t: Therapist, s?: Slot) => { setTherapist(t); setSlot(s ?? null); go("booking"); };
-  const joinSession = (t: Therapist, bookingId: string) => { setTherapist(t); setSessionBookingId(bookingId); go("session"); };
+  const joinSession = (t: Therapist, bookingId: string) => { setTherapist(t); setSessionBookingId(bookingId); setSessionGroupId(null); go("session"); };
+  const joinGroupSession = (t: Therapist, groupSessionId: string) => { setTherapist(t); setSessionGroupId(groupSessionId); setSessionBookingId(null); go("session"); };
 
   const showHeader = view !== "landing" && view !== "session" && view !== "login" && view !== "signup" && view !== "payment-return" && view !== "match-quiz";
 
@@ -68,15 +71,20 @@ function AppShell() {
             <button onClick={() => go("login")} className="mt-3 font-heading text-[#d97757] underline">Log in</button>
           </div>
         ) : profile.role === "therapist" ? (
-          <TherapistDashboard join={joinSession} />
+          <TherapistDashboard join={joinSession} joinGroup={joinGroupSession} />
         ) : profile.role === "admin" ? (
           <AdminDashboard />
         ) : (
-          <ClientDashboard go={go} join={joinSession} />
+          <ClientDashboard go={go} join={joinSession} joinGroup={joinGroupSession} />
         )
       )}
-      {view === "session" && therapist && sessionBookingId && (
-        <SessionRoom therapist={therapist} bookingId={sessionBookingId} end={() => go("dashboard")} />
+      {view === "session" && therapist && (sessionBookingId || sessionGroupId) && (
+        <SessionRoom
+          therapist={therapist}
+          bookingId={sessionBookingId ?? undefined}
+          groupSessionId={sessionGroupId ?? undefined}
+          end={() => go("dashboard")}
+        />
       )}
       {view === "login" && <Login go={go} />}
       {view === "signup" && <SignUp go={go} />}
@@ -98,6 +106,7 @@ function AppShell() {
         />
       )}
       {view === "check-in" && <CheckIn back={() => go("dashboard")} />}
+      {view === "groups" && <Groups go={go} joinGroup={joinGroupSession} />}
     </div>
   );
 }

@@ -9,6 +9,7 @@ export type PaymentMethod = "mpesa" | "card" | "bank";
 export type PaymentStatus = "pending" | "success" | "failed";
 export type PayoutStatus = "requested" | "paid";
 export type CheckInType = "phq9" | "gad7";
+export type GroupSessionStatus = "scheduled" | "completed" | "cancelled";
 
 export type Profile = {
   id: string;
@@ -95,7 +96,8 @@ export type SessionNotesRow = {
 
 export type MessageRow = {
   id: string;
-  booking_id: string;
+  booking_id: string | null;
+  group_session_id: string | null;
   sender_id: string;
   body: string;
   created_at: string;
@@ -127,6 +129,26 @@ export type CheckInRow = {
   answers: number[];
   score: number;
   created_at: string;
+};
+
+export type GroupSessionRow = {
+  id: string;
+  therapist_id: string;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string;
+  capacity: number;
+  video_room_url: string | null;
+  status: GroupSessionStatus;
+  created_at: string;
+};
+
+export type GroupSessionAttendeeRow = {
+  id: string;
+  group_session_id: string;
+  client_id: string;
+  joined_at: string;
 };
 
 // Note: these Row types are used for local casting/typing (e.g. `data as TherapistRow`),

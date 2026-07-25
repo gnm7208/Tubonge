@@ -3,7 +3,7 @@ import type { View } from "@/App";
 import type { Therapist } from "@/data/mock";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
-import { initialsOf, accentFor } from "@/lib/therapists";
+import { slotLabel, initialsOf, accentFor } from "@/lib/therapists";
 import { canJoinSession } from "@/lib/sessionTiming";
 import { scoreBand } from "@/lib/checkIns";
 import type { CheckInRow } from "@/lib/database.types";
@@ -11,7 +11,81 @@ import { Sparkline } from "@/components/Sparkline";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Video, Calendar, MessageSquare, ShieldCheck, CheckCircle2, Clock, Star, HeartPulse } from "lucide-react";
+import { Video, Calendar, MessageSquare, ShieldCheck, CheckCircle2, Clock, Star, HeartPulse, UsersRound } from "lucide-react";
+
+type MyGroupRow = {
+  group_sessions: {
+    id: string;
+    title: string;
+    starts_at: string;
+    ends_at: string;
+    status: string;
+    therapists: { id: string; title: string; profiles: { full_name: string } | null } | null;
+  } | null;
+};
+
+function MyGroups({ joinGroup }: { joinGroup: (t: Therapist, groupSessionId: string) => void }) {
+  const { profile } = useAuth();
+  const [rows, setRows] = useState<MyGroupRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!profile) return;
+    supabase
+      .from("group_session_attendees")
+      .select("group_sessions(id, title, starts_at, ends_at, status, therapists(id, title, profiles(full_name)))")
+      .eq("client_id", profile.id)
+      .then(({ data }) => {
+        setRows((data as unknown as MyGroupRow[]) ?? []);
+        setLoading(false);
+      });
+  }, [profile]);
+
+  const now = Date.now();
+  const upcoming = rows
+    .map((r) => r.group_sessions)
+    .filter((g): g is NonNullable<MyGroupRow["group_sessions"]> => !!g && g.status === "scheduled" && new Date(g.ends_at).getTime() > now)
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+
+  if (loading || upcoming.length === 0) return null;
+
+  return (
+    <>
+      <h2 className="mt-8 flex items-center gap-2 font-heading text-lg font-semibold">
+        <UsersRound className="h-4 w-4 text-[#788c5d]" /> Upcoming groups
+      </h2>
+      <div className="mt-3 space-y-3">
+        {upcoming.map((g) => {
+          const name = g.therapists?.profiles?.full_name ?? "Therapist";
+          const id = g.therapists?.id ?? g.id;
+          const joinable = canJoinSession(g.starts_at, g.ends_at);
+          return (
+            <div key={g.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+              <div>
+                <p className="font-heading text-sm font-semibold">{g.title}</p>
+                <p className="text-xs text-muted-foreground">with {name} · {slotLabel(g.starts_at)}</p>
+              </div>
+              <Button
+                size="sm"
+                disabled={!joinable}
+                onClick={() => {
+                  const t: Therapist = {
+                    id, name: g.title, title: g.therapists?.title || "Therapist", specialties: [], languages: [], years: 0, rate: 0,
+                    rating: 0, reviews: 0, verified: true, bio: "", initials: initialsOf(name), accent: accentFor(id), nextSlots: [],
+                  };
+                  joinGroup(t, g.id);
+                }}
+                className="bg-[#6a9bcc] font-heading text-white hover:bg-[#5b89b8]"
+              >
+                <Video className="mr-1.5 h-4 w-4" /> Join
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
 
 function MoodCard({ go }: { go: (v: View) => void }) {
   const { profile } = useAuth();
@@ -109,7 +183,15 @@ function ReviewForm({ booking, clientId, onDone }: { booking: BookingRow; client
   );
 }
 
-export function ClientDashboard({ go, join }: { go: (v: View) => void; join: (t: Therapist, bookingId: string) => void }) {
+export function ClientDashboard({
+  go,
+  join,
+  joinGroup,
+}: {
+  go: (v: View) => void;
+  join: (t: Therapist, bookingId: string) => void;
+  joinGroup: (t: Therapist, groupSessionId: string) => void;
+}) {
   const { profile } = useAuth();
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +228,10 @@ export function ClientDashboard({ go, join }: { go: (v: View) => void; join: (t:
           <h1 className="font-heading text-3xl font-semibold tracking-tight">My sessions</h1>
           <p className="mt-1 text-muted-foreground">Welcome back. Here's what's coming up.</p>
         </div>
-        <Button variant="outline" onClick={() => go("browse")} className="font-heading">Book another</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => go("groups")} className="font-heading">Group sessions</Button>
+          <Button variant="outline" onClick={() => go("browse")} className="font-heading">Book another</Button>
+        </div>
       </div>
 
       <MoodCard go={go} />
@@ -201,6 +286,8 @@ export function ClientDashboard({ go, join }: { go: (v: View) => void; join: (t:
           </div>
         )}
       </div>
+
+      <MyGroups joinGroup={joinGroup} />
 
       {/* Past */}
       {past.length > 0 && (

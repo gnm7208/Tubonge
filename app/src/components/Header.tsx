@@ -7,6 +7,7 @@ export function Header({ view, go }: { view: View; go: (v: View) => void }) {
   const { profile, signOut } = useAuth();
   const nav: { label: string; v: View }[] = [
     { label: "Find a therapist", v: "browse" },
+    { label: "Group sessions", v: "groups" },
     { label: "My sessions", v: "dashboard" },
   ];
   return (

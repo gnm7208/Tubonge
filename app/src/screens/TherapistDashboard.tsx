@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
-import type { TherapistRow, AvailabilitySlot, PayoutRow, CheckInRow } from "@/lib/database.types";
+import type { TherapistRow, AvailabilitySlot, PayoutRow, CheckInRow, GroupSessionRow } from "@/lib/database.types";
 import { slotLabel, initialsOf, accentFor } from "@/lib/therapists";
 import { canJoinSession } from "@/lib/sessionTiming";
 import { scoreBand } from "@/lib/checkIns";
@@ -13,7 +13,143 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Clock, CheckCircle2, XCircle, FileText, Upload, Plus, Trash2, CalendarPlus, Video, Banknote, Users, ChevronDown, HeartPulse } from "lucide-react";
+import { ShieldCheck, Clock, CheckCircle2, XCircle, FileText, Upload, Plus, Trash2, CalendarPlus, Video, Banknote, Users, ChevronDown, HeartPulse, UsersRound } from "lucide-react";
+
+const GROUP_SESSION_MINUTES = 60;
+
+function GroupSessionManager({ therapistId, joinGroup }: { therapistId: string; joinGroup: (t: Therapist, groupSessionId: string) => void }) {
+  const [groups, setGroups] = useState<(GroupSessionRow & { group_session_attendees: { count: number }[] })[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [when, setWhen] = useState("");
+  const [capacity, setCapacity] = useState(10);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("group_sessions")
+      .select("*, group_session_attendees(count)")
+      .eq("therapist_id", therapistId)
+      .neq("status", "cancelled")
+      .order("starts_at", { ascending: true });
+    setGroups((data as unknown as (GroupSessionRow & { group_session_attendees: { count: number }[] })[]) ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+  }, [therapistId]);
+
+  const create = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!when || !title) return;
+    setBusy(true);
+    setError(null);
+    const startsAt = new Date(when);
+    const endsAt = new Date(startsAt.getTime() + GROUP_SESSION_MINUTES * 60_000);
+    const { error } = await supabase.from("group_sessions").insert({
+      therapist_id: therapistId,
+      title,
+      description: description || null,
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
+      capacity,
+    });
+    setBusy(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setTitle("");
+    setDescription("");
+    setWhen("");
+    setCapacity(10);
+    await load();
+  };
+
+  const cancel = async (id: string) => {
+    setBusy(true);
+    await supabase.from("group_sessions").update({ status: "cancelled" }).eq("id", id);
+    setBusy(false);
+    await load();
+  };
+
+  const now = Date.now();
+  const upcoming = groups.filter((g) => new Date(g.ends_at).getTime() > now);
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-card p-6">
+      <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+        <UsersRound className="h-5 w-5 text-[#788c5d]" /> Group sessions
+      </h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Free groupinars ({GROUP_SESSION_MINUTES} min) -- clients RSVP, no payment involved.
+      </p>
+
+      <form onSubmit={create} className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="groupTitle" className="font-heading text-sm">Title</Label>
+          <Input id="groupTitle" required placeholder="Managing exam stress" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1.5 font-body" />
+        </div>
+        <div>
+          <Label htmlFor="groupWhen" className="font-heading text-sm">Date &amp; time</Label>
+          <Input id="groupWhen" type="datetime-local" required value={when} onChange={(e) => setWhen(e.target.value)} className="mt-1.5 font-body" />
+        </div>
+        <div className="sm:col-span-2">
+          <Label htmlFor="groupDescription" className="font-heading text-sm">Description</Label>
+          <Textarea id="groupDescription" value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1.5 font-body" rows={2} />
+        </div>
+        <div className="flex items-end gap-3">
+          <div>
+            <Label htmlFor="groupCapacity" className="font-heading text-sm">Capacity</Label>
+            <Input id="groupCapacity" type="number" min={2} max={100} required value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} className="mt-1.5 w-28 font-body" />
+          </div>
+          <Button type="submit" disabled={busy} className="bg-[#788c5d] font-heading text-white hover:bg-[#788c5d]/90">
+            <Plus className="mr-1.5 h-4 w-4" /> Schedule group
+          </Button>
+        </div>
+      </form>
+      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+
+      <div className="mt-5 space-y-2">
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : upcoming.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No upcoming groups yet.</p>
+        ) : (
+          upcoming.map((g) => {
+            const joinable = canJoinSession(g.starts_at, g.ends_at);
+            const t: Therapist = {
+              id: g.id, name: g.title, title: "Group session", specialties: [], languages: [], years: 0, rate: 0,
+              rating: 0, reviews: 0, verified: false, bio: "", initials: initialsOf(g.title), accent: accentFor(g.id), nextSlots: [],
+            };
+            return (
+              <div key={g.id} className="flex items-center justify-between rounded-xl border border-border bg-[#faf9f5] px-4 py-2.5">
+                <div>
+                  <p className="font-heading text-sm font-semibold">{g.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {slotLabel(g.starts_at)} · {g.group_session_attendees?.[0]?.count ?? 0}/{g.capacity} attending
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button size="sm" disabled={!joinable} onClick={() => joinGroup(t, g.id)} className="bg-[#6a9bcc] font-heading text-white hover:bg-[#5b89b8]">
+                    <Video className="mr-1.5 h-4 w-4" /> Join
+                  </Button>
+                  <button type="button" disabled={busy} onClick={() => cancel(g.id)} className="text-muted-foreground hover:text-destructive" aria-label="Cancel group session">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
 
 const SESSION_MINUTES = 50;
 
@@ -402,7 +538,13 @@ const STATUS_COPY: Record<TherapistRow["verification_status"], { label: string; 
   rejected: { label: "Not approved — please review and resubmit", icon: XCircle, color: "#b3452c" },
 };
 
-export function TherapistDashboard({ join }: { join: (t: Therapist, bookingId: string) => void }) {
+export function TherapistDashboard({
+  join,
+  joinGroup,
+}: {
+  join: (t: Therapist, bookingId: string) => void;
+  joinGroup: (t: Therapist, groupSessionId: string) => void;
+}) {
   const { profile } = useAuth();
   const [row, setRow] = useState<TherapistRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -632,6 +774,7 @@ export function TherapistDashboard({ join }: { join: (t: Therapist, bookingId: s
       </form>
 
       {row && <AvailabilityManager therapistId={row.id} />}
+      {row && <GroupSessionManager therapistId={row.id} joinGroup={joinGroup} />}
       {row && <EarningsAndPayouts therapistId={row.id} />}
 
       <div className="mt-6 flex items-center gap-2 rounded-xl bg-[#e8e6dc]/60 p-4 text-sm text-muted-foreground">

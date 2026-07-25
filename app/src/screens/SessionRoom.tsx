@@ -10,7 +10,17 @@ import { PhoneOff, Send, ShieldCheck, Loader2, NotebookPen } from "lucide-react"
 
 type Message = { id: string; sender_id: string; body: string; created_at: string };
 
-export function SessionRoom({ therapist: t, bookingId, end }: { therapist: Therapist; bookingId: string; end: () => void }) {
+export function SessionRoom({
+  therapist: t,
+  bookingId,
+  groupSessionId,
+  end,
+}: {
+  therapist: Therapist;
+  bookingId?: string;
+  groupSessionId?: string;
+  end: () => void;
+}) {
   const { profile } = useAuth();
   const videoRef = useRef<HTMLDivElement>(null);
   const callRef = useRef<DailyCall | null>(null);
@@ -29,7 +39,9 @@ export function SessionRoom({ therapist: t, bookingId, end }: { therapist: Thera
   useEffect(() => {
     let active = true;
     (async () => {
-      const { data, error } = await supabase.functions.invoke("create-session-room", { body: { bookingId } });
+      const fn = groupSessionId ? "join-group-session" : "create-session-room";
+      const body = groupSessionId ? { groupSessionId } : { bookingId };
+      const { data, error } = await supabase.functions.invoke(fn, { body });
       if (!active) return;
       if (error || !data?.room_url) {
         setError(data?.error ?? error?.message ?? "Could not start the video call.");
@@ -53,22 +65,25 @@ export function SessionRoom({ therapist: t, bookingId, end }: { therapist: Thera
       callRef.current?.destroy();
       callRef.current = null;
     };
-  }, [bookingId]);
+  }, [bookingId, groupSessionId]);
 
   // Chat: load history + subscribe to realtime inserts
   useEffect(() => {
+    const column = groupSessionId ? "group_session_id" : "booking_id";
+    const id = groupSessionId ?? bookingId;
+
     supabase
       .from("messages")
       .select("id, sender_id, body, created_at")
-      .eq("booking_id", bookingId)
+      .eq(column, id)
       .order("created_at", { ascending: true })
       .then(({ data }) => setMsgs((data as Message[]) ?? []));
 
     const channel = supabase
-      .channel(`booking-${bookingId}`)
+      .channel(`${column}-${id}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `booking_id=eq.${bookingId}` },
+        { event: "INSERT", schema: "public", table: "messages", filter: `${column}=eq.${id}` },
         (payload) => setMsgs((prev) => [...prev, payload.new as Message])
       )
       .subscribe();
@@ -76,11 +91,11 @@ export function SessionRoom({ therapist: t, bookingId, end }: { therapist: Thera
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [bookingId]);
+  }, [bookingId, groupSessionId]);
 
-  // Therapist-only private notes
+  // Therapist-only private notes -- not applicable to group rooms (no single client to note about)
   useEffect(() => {
-    if (!isTherapist) return;
+    if (!isTherapist || !bookingId) return;
     supabase
       .from("sessions")
       .select("id")
@@ -102,7 +117,11 @@ export function SessionRoom({ therapist: t, bookingId, end }: { therapist: Thera
     if (!draft.trim() || !profile) return;
     const body = draft.trim();
     setDraft("");
-    await supabase.from("messages").insert({ booking_id: bookingId, sender_id: profile.id, body });
+    await supabase.from("messages").insert(
+      groupSessionId
+        ? { group_session_id: groupSessionId, sender_id: profile.id, body }
+        : { booking_id: bookingId, sender_id: profile.id, body }
+    );
   };
 
   const saveNotes = async () => {
@@ -118,8 +137,10 @@ export function SessionRoom({ therapist: t, bookingId, end }: { therapist: Thera
   };
 
   const leave = async () => {
-    // Idempotent: only flips confirmed -> completed once, whichever party leaves first.
-    await supabase.from("bookings").update({ status: "completed" }).eq("id", bookingId).eq("status", "confirmed");
+    if (bookingId) {
+      // Idempotent: only flips confirmed -> completed once, whichever party leaves first.
+      await supabase.from("bookings").update({ status: "completed" }).eq("id", bookingId).eq("status", "confirmed");
+    }
     end();
   };
 
@@ -154,7 +175,7 @@ export function SessionRoom({ therapist: t, bookingId, end }: { therapist: Thera
         </div>
 
         <div className="hidden w-80 flex-col gap-4 md:flex">
-          {isTherapist && (
+          {isTherapist && !groupSessionId && (
             <div className="flex max-h-56 flex-col rounded-2xl bg-[#faf9f5] text-[#141413]">
               <div className="flex items-center gap-1.5 border-b border-border px-4 py-3 font-heading text-sm font-semibold">
                 <NotebookPen className="h-3.5 w-3.5" /> Private notes
