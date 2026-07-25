@@ -7,13 +7,16 @@ import { initialsOf, accentFor } from "@/lib/therapists";
 import { canJoinSession } from "@/lib/sessionTiming";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Video, Calendar, MessageSquare, ShieldCheck, CheckCircle2, Clock } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Video, Calendar, MessageSquare, ShieldCheck, CheckCircle2, Clock, Star } from "lucide-react";
 
 type BookingRow = {
   id: string;
+  therapist_id: string;
   status: string;
   therapists: { id: string; title: string; profiles: { full_name: string } | null } | null;
   availability_slots: { starts_at: string; ends_at: string } | null;
+  reviews: { id: string; rating: number; comment: string | null }[];
 };
 
 function toTherapist(t: NonNullable<BookingRow["therapists"]>): Therapist {
@@ -24,16 +27,48 @@ function toTherapist(t: NonNullable<BookingRow["therapists"]>): Therapist {
   };
 }
 
+function ReviewForm({ booking, clientId, onDone }: { booking: BookingRow; clientId: string; onDone: () => void }) {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    setSaving(true);
+    await supabase.from("reviews").insert({
+      booking_id: booking.id, client_id: clientId, therapist_id: booking.therapist_id, rating, comment: comment || null,
+    });
+    setSaving(false);
+    onDone();
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border border-border bg-[#faf9f5] p-3">
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button key={n} type="button" onClick={() => setRating(n)} aria-label={`${n} stars`}>
+            <Star className={`h-5 w-5 ${n <= rating ? "fill-[#d97757] text-[#d97757]" : "text-muted-foreground"}`} />
+          </button>
+        ))}
+      </div>
+      <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="How was your session? (optional)" className="mt-2 font-body" rows={2} />
+      <Button size="sm" disabled={saving} onClick={submit} className="mt-2 bg-[#d97757] font-heading text-white hover:bg-[#c9663f]">
+        {saving ? "Saving…" : "Submit review"}
+      </Button>
+    </div>
+  );
+}
+
 export function ClientDashboard({ go, join }: { go: (v: View) => void; join: (t: Therapist, bookingId: string) => void }) {
   const { profile } = useAuth();
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () => {
     if (!profile) return;
     supabase
       .from("bookings")
-      .select("id, status, therapists(id, title, profiles(full_name)), availability_slots(starts_at, ends_at)")
+      .select("id, therapist_id, status, therapists(id, title, profiles(full_name)), availability_slots(starts_at, ends_at), reviews(id, rating, comment)")
       .eq("client_id", profile.id)
       .in("status", ["pending_payment", "confirmed", "completed"])
       .order("created_at", { ascending: false })
@@ -41,7 +76,9 @@ export function ClientDashboard({ go, join }: { go: (v: View) => void; join: (t:
         setBookings((data as unknown as BookingRow[]) ?? []);
         setLoading(false);
       });
-  }, [profile]);
+  };
+
+  useEffect(load, [profile]);
 
   const now = Date.now();
   const upcoming = bookings.filter(
@@ -119,17 +156,33 @@ export function ClientDashboard({ go, join }: { go: (v: View) => void; join: (t:
           <div className="mt-3 space-y-3">
             {past.map((b) => {
               const t = b.therapists ? toTherapist(b.therapists) : null;
+              const review = b.reviews[0];
               return (
-                <div key={b.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="grid h-10 w-10 place-items-center rounded-full font-heading text-sm font-semibold text-white" style={{ background: t?.accent }}>{t?.initials}</span>
-                    <div>
-                      <p className="font-heading text-sm font-semibold">{t?.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {b.availability_slots ? new Date(b.availability_slots.starts_at).toLocaleDateString() : ""}
-                      </p>
+                <div key={b.id} className="rounded-xl border border-border bg-card p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-10 w-10 place-items-center rounded-full font-heading text-sm font-semibold text-white" style={{ background: t?.accent }}>{t?.initials}</span>
+                      <div>
+                        <p className="font-heading text-sm font-semibold">{t?.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {b.availability_slots ? new Date(b.availability_slots.starts_at).toLocaleDateString() : ""}
+                        </p>
+                      </div>
                     </div>
+                    {b.status === "completed" && !review && reviewingId !== b.id && (
+                      <Button variant="ghost" size="sm" onClick={() => setReviewingId(b.id)} className="font-heading text-[#d97757]">
+                        <Star className="mr-1 h-3.5 w-3.5" /> Rate
+                      </Button>
+                    )}
+                    {review && (
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        {Array.from({ length: review.rating }).map((_, i) => <Star key={i} className="h-3.5 w-3.5 fill-[#d97757] text-[#d97757]" />)}
+                      </div>
+                    )}
                   </div>
+                  {reviewingId === b.id && profile && (
+                    <ReviewForm booking={b} clientId={profile.id} onDone={() => { setReviewingId(null); load(); }} />
+                  )}
                 </div>
               );
             })}

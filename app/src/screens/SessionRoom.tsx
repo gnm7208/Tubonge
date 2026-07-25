@@ -117,6 +117,12 @@ export function SessionRoom({ therapist: t, bookingId, end }: { therapist: Thera
     setNotesSaving(false);
   };
 
+  const leave = async () => {
+    // Idempotent: only flips confirmed -> completed once, whichever party leaves first.
+    await supabase.from("bookings").update({ status: "completed" }).eq("id", bookingId).eq("status", "confirmed");
+    end();
+  };
+
   return (
     <div className="flex h-screen flex-col bg-[#141413] text-white">
       <div className="flex items-center justify-between px-5 py-3">
@@ -178,7 +184,7 @@ export function SessionRoom({ therapist: t, bookingId, end }: { therapist: Thera
       </div>
 
       <div className="flex items-center justify-center pb-6">
-        <Button onClick={end} className="h-12 rounded-full bg-[#e5484d] px-6 font-heading hover:bg-[#d43b40]">
+        <Button onClick={leave} className="h-12 rounded-full bg-[#e5484d] px-6 font-heading hover:bg-[#d43b40]">
           <PhoneOff className="mr-2 h-5 w-5" /> Leave
         </Button>
       </div>

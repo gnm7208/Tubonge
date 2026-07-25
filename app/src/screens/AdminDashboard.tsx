@@ -1,14 +1,78 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
-import type { TherapistRow } from "@/lib/database.types";
+import type { TherapistRow, PayoutRow } from "@/lib/database.types";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ShieldCheck, Inbox, CheckCircle2, XCircle, FileText } from "lucide-react";
+import { ShieldCheck, Inbox, CheckCircle2, XCircle, FileText, Banknote } from "lucide-react";
 
 type PendingTherapist = TherapistRow & {
   profiles: { full_name: string; email: string | null; phone: string | null } | null;
 };
+
+type PendingPayout = PayoutRow & {
+  therapists: { profiles: { full_name: string } | null } | null;
+};
+
+function PayoutQueue() {
+  const [payouts, setPayouts] = useState<PendingPayout[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("payouts")
+      .select("*, therapists(profiles(full_name))")
+      .eq("status", "requested")
+      .order("requested_at", { ascending: true });
+    setPayouts((data as unknown as PendingPayout[]) ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const markPaid = async (id: string) => {
+    setBusyId(id);
+    await supabase.from("payouts").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", id);
+    setBusyId(null);
+    await load();
+  };
+
+  return (
+    <div className="mt-8">
+      <h2 className="flex items-center gap-2 font-heading text-xl font-semibold">
+        <Banknote className="h-5 w-5 text-[#788c5d]" /> Payout requests
+      </h2>
+      {loading ? (
+        <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
+      ) : payouts.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">No pending payout requests.</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {payouts.map((p) => (
+            <div key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+              <div>
+                <p className="font-heading font-semibold">{p.therapists?.profiles?.full_name ?? "Therapist"}</p>
+                <p className="text-sm text-muted-foreground">
+                  KES {p.amount_kes.toLocaleString()} · requested {new Date(p.requested_at).toLocaleDateString()}
+                </p>
+              </div>
+              <Button size="sm" disabled={busyId === p.id} onClick={() => markPaid(p.id)} className="bg-[#788c5d] font-heading text-white hover:bg-[#788c5d]/90">
+                Mark paid
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="mt-2 text-xs text-muted-foreground">
+        "Mark paid" only records that you settled it (e.g. via bank transfer) -- no money actually moves from here.
+      </p>
+    </div>
+  );
+}
 
 export function AdminDashboard() {
   const { profile } = useAuth();
@@ -132,6 +196,8 @@ export function AdminDashboard() {
           ))}
         </div>
       )}
+
+      <PayoutQueue />
 
       <div className="mt-6 flex items-center gap-2 rounded-xl bg-[#e8e6dc]/60 p-4 text-sm text-muted-foreground">
         <ShieldCheck className="h-4 w-4 shrink-0 text-[#788c5d]" />

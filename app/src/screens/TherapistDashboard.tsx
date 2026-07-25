@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
-import type { TherapistRow, AvailabilitySlot } from "@/lib/database.types";
+import type { TherapistRow, AvailabilitySlot, PayoutRow } from "@/lib/database.types";
 import { slotLabel, initialsOf, accentFor } from "@/lib/therapists";
 import { canJoinSession } from "@/lib/sessionTiming";
 import { ALL_SPECIALTIES, ALL_LANGUAGES, type Therapist } from "@/data/mock";
@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { ShieldCheck, Clock, CheckCircle2, XCircle, FileText, Upload, Plus, Trash2, CalendarPlus, Video } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ShieldCheck, Clock, CheckCircle2, XCircle, FileText, Upload, Plus, Trash2, CalendarPlus, Video, Banknote } from "lucide-react";
 
 const SESSION_MINUTES = 50;
 
@@ -121,6 +122,119 @@ function AvailabilityManager({ therapistId }: { therapistId: string }) {
 
 function toggle(list: string[], item: string) {
   return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
+}
+
+function EarningsAndPayouts({ therapistId }: { therapistId: string }) {
+  const [gross, setGross] = useState(0);
+  const [payouts, setPayouts] = useState<PayoutRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [amount, setAmount] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const [{ data: bookings }, { data: payoutRows }] = await Promise.all([
+      supabase.from("bookings").select("amount_kes").eq("therapist_id", therapistId).eq("status", "completed"),
+      supabase.from("payouts").select("*").eq("therapist_id", therapistId).order("requested_at", { ascending: false }),
+    ]);
+    const g = (bookings ?? []).reduce((s, b) => s + b.amount_kes, 0);
+    setGross(g);
+    setPayouts((payoutRows as PayoutRow[]) ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+  }, [therapistId]);
+
+  const withdrawn = payouts.filter((p) => p.status === "requested" || p.status === "paid").reduce((s, p) => s + p.amount_kes, 0);
+  const available = gross - withdrawn;
+
+  useEffect(() => {
+    setAmount(available);
+  }, [available]);
+
+  const requestPayout = async () => {
+    if (amount <= 0 || amount > available) {
+      setError("Enter an amount between 1 and your available balance.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const { error } = await supabase.from("payouts").insert({ therapist_id: therapistId, amount_kes: amount });
+    setBusy(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    await load();
+  };
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-card p-6">
+      <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+        <Banknote className="h-5 w-5 text-[#788c5d]" /> Earnings & payouts
+      </h2>
+
+      {loading ? (
+        <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
+      ) : (
+        <>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-border bg-[#faf9f5] p-4">
+              <p className="text-xs text-muted-foreground">Total earned</p>
+              <p className="font-heading text-xl font-semibold">KES {gross.toLocaleString()}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-[#faf9f5] p-4">
+              <p className="text-xs text-muted-foreground">Requested / paid out</p>
+              <p className="font-heading text-xl font-semibold">KES {withdrawn.toLocaleString()}</p>
+            </div>
+            <div className="rounded-xl border border-[#788c5d]/40 bg-[#788c5d]/10 p-4">
+              <p className="text-xs text-muted-foreground">Available to request</p>
+              <p className="font-heading text-xl font-semibold text-[#4f6138]">KES {available.toLocaleString()}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <div>
+              <Label htmlFor="payoutAmount" className="font-heading text-sm">Payout amount (KES)</Label>
+              <Input
+                id="payoutAmount"
+                type="number"
+                min={1}
+                max={available}
+                value={amount}
+                onChange={(e) => setAmount(Number(e.target.value))}
+                className="mt-1.5 w-40 font-body"
+              />
+            </div>
+            <Button disabled={busy || available <= 0} onClick={requestPayout} className="bg-[#788c5d] font-heading text-white hover:bg-[#788c5d]/90">
+              {busy ? "Requesting…" : "Request payout"}
+            </Button>
+          </div>
+          {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+          <p className="mt-2 text-xs text-muted-foreground">
+            Payouts are settled manually by Tubonge for now (bank transfer) -- an admin marks your request paid once sent.
+          </p>
+
+          {payouts.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {payouts.map((p) => (
+                <div key={p.id} className="flex items-center justify-between rounded-lg border border-border px-4 py-2.5 text-sm">
+                  <span className="font-heading">KES {p.amount_kes.toLocaleString()}</span>
+                  <span className="text-muted-foreground">{new Date(p.requested_at).toLocaleDateString()}</span>
+                  <Badge className={`border-none font-heading text-xs ${p.status === "paid" ? "bg-[#788c5d]/15 text-[#4f6138]" : "bg-[#e8e6dc] text-[#141413]"}`}>
+                    {p.status === "paid" ? "Paid" : "Requested"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
 type TherapistBookingRow = {
@@ -422,6 +536,7 @@ export function TherapistDashboard({ join }: { join: (t: Therapist, bookingId: s
       </form>
 
       {row && <AvailabilityManager therapistId={row.id} />}
+      {row && <EarningsAndPayouts therapistId={row.id} />}
 
       <div className="mt-6 flex items-center gap-2 rounded-xl bg-[#e8e6dc]/60 p-4 text-sm text-muted-foreground">
         <ShieldCheck className="h-4 w-4 shrink-0 text-[#788c5d]" />
