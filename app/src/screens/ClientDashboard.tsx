@@ -5,10 +5,61 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { initialsOf, accentFor } from "@/lib/therapists";
 import { canJoinSession } from "@/lib/sessionTiming";
+import { scoreBand } from "@/lib/checkIns";
+import type { CheckInRow } from "@/lib/database.types";
+import { Sparkline } from "@/components/Sparkline";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Video, Calendar, MessageSquare, ShieldCheck, CheckCircle2, Clock, Star } from "lucide-react";
+import { Video, Calendar, MessageSquare, ShieldCheck, CheckCircle2, Clock, Star, HeartPulse } from "lucide-react";
+
+function MoodCard({ go }: { go: (v: View) => void }) {
+  const { profile } = useAuth();
+  const [checkIns, setCheckIns] = useState<CheckInRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!profile) return;
+    supabase
+      .from("check_ins")
+      .select("*")
+      .eq("client_id", profile.id)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        setCheckIns((data as CheckInRow[]) ?? []);
+        setLoading(false);
+      });
+  }, [profile]);
+
+  const latest = checkIns[checkIns.length - 1];
+  const band = latest ? scoreBand(latest.type, latest.score) : null;
+
+  return (
+    <div className="mt-6 flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-4">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#d97757]/15 text-[#d97757]"><HeartPulse className="h-5 w-5" /></span>
+        <div>
+          <p className="font-heading font-semibold">How are you feeling?</p>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : latest && band ? (
+            <p className="text-sm text-muted-foreground">
+              Last check-in: <span className="font-heading font-medium" style={{ color: band.color }}>{band.label}</span> · {new Date(latest.created_at).toLocaleDateString()}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">No check-ins yet — private, just for you and your therapist.</p>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-4">
+        {checkIns.length > 1 && (
+          <Sparkline values={checkIns.slice(-8).map((c) => c.score)} max={27} color={band?.color ?? "#d97757"} />
+        )}
+        <Button onClick={() => go("check-in")} variant="outline" className="font-heading">Take a check-in</Button>
+      </div>
+    </div>
+  );
+}
 
 type BookingRow = {
   id: string;
@@ -97,6 +148,8 @@ export function ClientDashboard({ go, join }: { go: (v: View) => void; join: (t:
         </div>
         <Button variant="outline" onClick={() => go("browse")} className="font-heading">Book another</Button>
       </div>
+
+      <MoodCard go={go} />
 
       {/* Upcoming */}
       <h2 className="mt-8 font-heading text-lg font-semibold">Upcoming</h2>

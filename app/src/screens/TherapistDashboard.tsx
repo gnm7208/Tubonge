@@ -1,17 +1,19 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
-import type { TherapistRow, AvailabilitySlot, PayoutRow } from "@/lib/database.types";
+import type { TherapistRow, AvailabilitySlot, PayoutRow, CheckInRow } from "@/lib/database.types";
 import { slotLabel, initialsOf, accentFor } from "@/lib/therapists";
 import { canJoinSession } from "@/lib/sessionTiming";
+import { scoreBand } from "@/lib/checkIns";
 import { ALL_SPECIALTIES, ALL_LANGUAGES, type Therapist } from "@/data/mock";
+import { Sparkline } from "@/components/Sparkline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Clock, CheckCircle2, XCircle, FileText, Upload, Plus, Trash2, CalendarPlus, Video, Banknote } from "lucide-react";
+import { ShieldCheck, Clock, CheckCircle2, XCircle, FileText, Upload, Plus, Trash2, CalendarPlus, Video, Banknote, Users, ChevronDown, HeartPulse } from "lucide-react";
 
 const SESSION_MINUTES = 50;
 
@@ -301,6 +303,99 @@ function UpcomingSessions({ therapistId, join }: { therapistId: string; join: (t
   );
 }
 
+type ClientSummary = { client_id: string; full_name: string };
+
+function ClientDetail({ clientId }: { clientId: string }) {
+  const [checkIns, setCheckIns] = useState<CheckInRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from("check_ins")
+      .select("*")
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        setCheckIns((data as CheckInRow[]) ?? []);
+        setLoading(false);
+      });
+  }, [clientId]);
+
+  const latest = checkIns[checkIns.length - 1];
+  const band = latest ? scoreBand(latest.type, latest.score) : null;
+
+  return (
+    <div className="mt-2 rounded-xl border border-border bg-[#faf9f5] p-4">
+      <p className="flex items-center gap-1.5 font-heading text-xs font-semibold text-muted-foreground"><HeartPulse className="h-3.5 w-3.5" /> Check-in trend</p>
+      {loading ? (
+        <p className="mt-2 text-sm text-muted-foreground">Loading…</p>
+      ) : checkIns.length === 0 ? (
+        <p className="mt-2 text-sm text-muted-foreground">No check-ins yet.</p>
+      ) : (
+        <div className="mt-3 flex items-center gap-4">
+          <Sparkline values={checkIns.slice(-8).map((c) => c.score)} max={27} color={band?.color ?? "#788c5d"} />
+          {band && latest && (
+            <div>
+              <p className="font-heading text-sm font-semibold" style={{ color: band.color }}>{band.label}</p>
+              <p className="text-xs text-muted-foreground">{latest.type === "phq9" ? "Mood" : "Anxiety"} · {new Date(latest.created_at).toLocaleDateString()}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MyClients({ therapistId }: { therapistId: string }) {
+  const [clients, setClients] = useState<ClientSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("bookings")
+      .select("client_id, profiles(full_name)")
+      .eq("therapist_id", therapistId)
+      .in("status", ["confirmed", "completed"])
+      .then(({ data }) => {
+        const seen = new Map<string, string>();
+        for (const b of (data as unknown as { client_id: string; profiles: { full_name: string } | null }[]) ?? []) {
+          if (!seen.has(b.client_id)) seen.set(b.client_id, b.profiles?.full_name ?? "Client");
+        }
+        setClients(Array.from(seen, ([client_id, full_name]) => ({ client_id, full_name })));
+        setLoading(false);
+      });
+  }, [therapistId]);
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-card p-6">
+      <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+        <Users className="h-5 w-5 text-[#788c5d]" /> My clients
+      </h2>
+      <div className="mt-4 space-y-2">
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : clients.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Clients from confirmed bookings will show up here.</p>
+        ) : (
+          clients.map((c) => (
+            <div key={c.client_id}>
+              <button
+                onClick={() => setOpenId(openId === c.client_id ? null : c.client_id)}
+                className="flex w-full items-center justify-between rounded-xl border border-border px-4 py-3 text-left transition-colors hover:border-[#788c5d]/40"
+              >
+                <span className="font-heading text-sm font-semibold">{c.full_name}</span>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${openId === c.client_id ? "rotate-180" : ""}`} />
+              </button>
+              {openId === c.client_id && <ClientDetail clientId={c.client_id} />}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 const STATUS_COPY: Record<TherapistRow["verification_status"], { label: string; icon: typeof Clock; color: string }> = {
   pending: { label: "Verification pending", icon: Clock, color: "#8a6d3b" },
   approved: { label: "Verified", icon: CheckCircle2, color: "#4f6138" },
@@ -432,6 +527,7 @@ export function TherapistDashboard({ join }: { join: (t: Therapist, bookingId: s
       )}
 
       {row && <UpcomingSessions therapistId={row.id} join={join} />}
+      {row && <MyClients therapistId={row.id} />}
 
       <form onSubmit={submit} className="mt-6 grid gap-5 rounded-2xl border border-border bg-card p-6">
         <h2 className="font-heading text-lg font-semibold">

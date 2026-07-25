@@ -8,6 +8,7 @@ export type BookingStatus = "pending_payment" | "confirmed" | "completed" | "can
 export type PaymentMethod = "mpesa" | "card" | "bank";
 export type PaymentStatus = "pending" | "success" | "failed";
 export type PayoutStatus = "requested" | "paid";
+export type CheckInType = "phq9" | "gad7";
 
 export type Profile = {
   id: string;
@@ -117,6 +118,15 @@ export type PayoutRow = {
   status: PayoutStatus;
   requested_at: string;
   paid_at: string | null;
+};
+
+export type CheckInRow = {
+  id: string;
+  client_id: string;
+  type: CheckInType;
+  answers: number[];
+  score: number;
+  created_at: string;
 };
 
 // Note: these Row types are used for local casting/typing (e.g. `data as TherapistRow`),

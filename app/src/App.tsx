@@ -15,10 +15,11 @@ import { PrivacyPolicy } from "@/screens/PrivacyPolicy";
 import { Terms } from "@/screens/Terms";
 import { MatchQuiz, type QuizAnswers } from "@/screens/MatchQuiz";
 import { MatchResults } from "@/screens/MatchResults";
+import { CheckIn } from "@/screens/CheckIn";
 import { Header } from "@/components/Header";
 import type { Therapist, Slot } from "@/data/mock";
 
-export type View = "landing" | "browse" | "profile" | "booking" | "dashboard" | "session" | "login" | "signup" | "payment-return" | "privacy" | "terms" | "match-quiz" | "match-results";
+export type View = "landing" | "browse" | "profile" | "booking" | "dashboard" | "session" | "login" | "signup" | "payment-return" | "privacy" | "terms" | "match-quiz" | "match-results" | "check-in";
 
 function initialOrderTrackingId(): string | null {
   const params = new URLSearchParams(window.location.search);
@@ -96,6 +97,7 @@ function AppShell() {
           startBooking={startBooking}
         />
       )}
+      {view === "check-in" && <CheckIn back={() => go("dashboard")} />}
     </div>
   );
 }
