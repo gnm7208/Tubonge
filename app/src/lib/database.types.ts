@@ -79,8 +79,15 @@ export type SessionRow = {
   video_room_url: string | null;
   started_at: string | null;
   ended_at: string | null;
-  notes_therapist: string | null;
   created_at: string;
+  updated_at: string;
+};
+
+export type SessionNotesRow = {
+  id: string;
+  session_id: string;
+  therapist_id: string;
+  notes: string | null;
   updated_at: string;
 };
 

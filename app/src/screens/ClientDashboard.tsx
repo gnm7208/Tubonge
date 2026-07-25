@@ -4,6 +4,7 @@ import type { Therapist } from "@/data/mock";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { initialsOf, accentFor } from "@/lib/therapists";
+import { canJoinSession } from "@/lib/sessionTiming";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Video, Calendar, MessageSquare, ShieldCheck, CheckCircle2, Clock } from "lucide-react";
@@ -12,7 +13,7 @@ type BookingRow = {
   id: string;
   status: string;
   therapists: { id: string; title: string; profiles: { full_name: string } | null } | null;
-  availability_slots: { starts_at: string } | null;
+  availability_slots: { starts_at: string; ends_at: string } | null;
 };
 
 function toTherapist(t: NonNullable<BookingRow["therapists"]>): Therapist {
@@ -23,7 +24,7 @@ function toTherapist(t: NonNullable<BookingRow["therapists"]>): Therapist {
   };
 }
 
-export function ClientDashboard({ go, join }: { go: (v: View) => void; join: (t: Therapist) => void }) {
+export function ClientDashboard({ go, join }: { go: (v: View) => void; join: (t: Therapist, bookingId: string) => void }) {
   const { profile } = useAuth();
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +33,7 @@ export function ClientDashboard({ go, join }: { go: (v: View) => void; join: (t:
     if (!profile) return;
     supabase
       .from("bookings")
-      .select("id, status, therapists(id, title, profiles(full_name)), availability_slots(starts_at)")
+      .select("id, status, therapists(id, title, profiles(full_name)), availability_slots(starts_at, ends_at)")
       .eq("client_id", profile.id)
       .in("status", ["pending_payment", "confirmed", "completed"])
       .order("created_at", { ascending: false })
@@ -91,7 +92,13 @@ export function ClientDashboard({ go, join }: { go: (v: View) => void; join: (t:
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" className="font-heading"><MessageSquare className="mr-1.5 h-4 w-4" /> Message</Button>
-                    <Button onClick={() => t && join(t)} className="bg-[#6a9bcc] font-heading text-white hover:bg-[#5b89b8]"><Video className="mr-1.5 h-4 w-4" /> Join session</Button>
+                    <Button
+                      onClick={() => t && join(t, b.id)}
+                      disabled={!t || !b.availability_slots || !canJoinSession(b.availability_slots.starts_at, b.availability_slots.ends_at)}
+                      className="bg-[#6a9bcc] font-heading text-white hover:bg-[#5b89b8]"
+                    >
+                      <Video className="mr-1.5 h-4 w-4" /> Join session
+                    </Button>
                   </div>
                 </div>
               </div>

@@ -2,14 +2,15 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import type { TherapistRow, AvailabilitySlot } from "@/lib/database.types";
-import { slotLabel } from "@/lib/therapists";
-import { ALL_SPECIALTIES, ALL_LANGUAGES } from "@/data/mock";
+import { slotLabel, initialsOf, accentFor } from "@/lib/therapists";
+import { canJoinSession } from "@/lib/sessionTiming";
+import { ALL_SPECIALTIES, ALL_LANGUAGES, type Therapist } from "@/data/mock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { ShieldCheck, Clock, CheckCircle2, XCircle, FileText, Upload, Plus, Trash2, CalendarPlus } from "lucide-react";
+import { ShieldCheck, Clock, CheckCircle2, XCircle, FileText, Upload, Plus, Trash2, CalendarPlus, Video } from "lucide-react";
 
 const SESSION_MINUTES = 50;
 
@@ -122,13 +123,77 @@ function toggle(list: string[], item: string) {
   return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
 }
 
+type TherapistBookingRow = {
+  id: string;
+  profiles: { full_name: string } | null;
+  availability_slots: { starts_at: string; ends_at: string } | null;
+};
+
+function UpcomingSessions({ therapistId, join }: { therapistId: string; join: (t: Therapist, bookingId: string) => void }) {
+  const [bookings, setBookings] = useState<TherapistBookingRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from("bookings")
+      .select("id, profiles(full_name), availability_slots(starts_at, ends_at)")
+      .eq("therapist_id", therapistId)
+      .eq("status", "confirmed")
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        setBookings((data as unknown as TherapistBookingRow[]) ?? []);
+        setLoading(false);
+      });
+  }, [therapistId]);
+
+  const now = Date.now();
+  const upcoming = bookings.filter((b) => b.availability_slots && new Date(b.availability_slots.ends_at).getTime() > now);
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-card p-6">
+      <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+        <Video className="h-5 w-5 text-[#6a9bcc]" /> Upcoming sessions
+      </h2>
+      <div className="mt-4 space-y-2">
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : upcoming.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No confirmed sessions yet.</p>
+        ) : (
+          upcoming.map((b) => {
+            const name = b.profiles?.full_name ?? "Client";
+            const clientAsTherapist: Therapist = {
+              id: b.id, name, title: "Client", specialties: [], languages: [], years: 0, rate: 0,
+              rating: 0, reviews: 0, verified: false, bio: "", initials: initialsOf(name), accent: accentFor(b.id), nextSlots: [],
+            };
+            const joinable = b.availability_slots ? canJoinSession(b.availability_slots.starts_at, b.availability_slots.ends_at) : false;
+            return (
+              <div key={b.id} className="flex items-center justify-between rounded-xl border border-border bg-[#faf9f5] px-4 py-3">
+                <div>
+                  <p className="font-heading text-sm font-semibold">{name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {b.availability_slots ? new Date(b.availability_slots.starts_at).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit", month: "short", day: "numeric" }) : "—"}
+                  </p>
+                </div>
+                <Button size="sm" disabled={!joinable} onClick={() => join(clientAsTherapist, b.id)} className="bg-[#6a9bcc] font-heading text-white hover:bg-[#5b89b8]">
+                  <Video className="mr-1.5 h-4 w-4" /> Join
+                </Button>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 const STATUS_COPY: Record<TherapistRow["verification_status"], { label: string; icon: typeof Clock; color: string }> = {
   pending: { label: "Verification pending", icon: Clock, color: "#8a6d3b" },
   approved: { label: "Verified", icon: CheckCircle2, color: "#4f6138" },
   rejected: { label: "Not approved — please review and resubmit", icon: XCircle, color: "#b3452c" },
 };
 
-export function TherapistDashboard() {
+export function TherapistDashboard({ join }: { join: (t: Therapist, bookingId: string) => void }) {
   const { profile } = useAuth();
   const [row, setRow] = useState<TherapistRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -251,6 +316,8 @@ export function TherapistDashboard() {
           </div>
         </div>
       )}
+
+      {row && <UpcomingSessions therapistId={row.id} join={join} />}
 
       <form onSubmit={submit} className="mt-6 grid gap-5 rounded-2xl border border-border bg-card p-6">
         <h2 className="font-heading text-lg font-semibold">

@@ -179,6 +179,11 @@ Each phase should end with something runnable. Ask Claude to write tests where n
 - Notifications (booking, reminder 1h before, cancellation), empty/error states, mobile QA.
 - Privacy policy, consent, crisis disclaimer, terms.
 - Swap M-Pesa to production shortcode once Safaricom approves; smoke-test with a small real payment.
+- Expire stale `pending_payment` bookings/`held` slots (background job) -- abandoned checkouts
+  (closed tab, payment never completed and no IPN ever arrives) currently leave a slot held
+  forever. A scheduled job (e.g. `pg_cron` calling a function, or a Supabase Edge Function on a
+  cron trigger) should release slots/cancel bookings stuck in that state past some timeout
+  (e.g. 30 min).
 - Deliverable: production-ready responsive web app.
 
 ---

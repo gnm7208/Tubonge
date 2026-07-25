@@ -26,6 +26,7 @@ function AppShell() {
   const [view, setView] = useState<View>(returningOrderTrackingId ? "payment-return" : "landing");
   const [therapist, setTherapist] = useState<Therapist | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
+  const [sessionBookingId, setSessionBookingId] = useState<string | null>(null);
   const { loading, profile } = useAuth();
 
   const go = (v: View) => {
@@ -36,6 +37,7 @@ function AppShell() {
 
   const openProfile = (t: Therapist) => { setTherapist(t); go("profile"); };
   const startBooking = (t: Therapist, s?: Slot) => { setTherapist(t); setSlot(s ?? null); go("booking"); };
+  const joinSession = (t: Therapist, bookingId: string) => { setTherapist(t); setSessionBookingId(bookingId); go("session"); };
 
   const showHeader = view !== "landing" && view !== "session" && view !== "login" && view !== "signup" && view !== "payment-return";
 
@@ -60,15 +62,15 @@ function AppShell() {
             <button onClick={() => go("login")} className="mt-3 font-heading text-[#d97757] underline">Log in</button>
           </div>
         ) : profile.role === "therapist" ? (
-          <TherapistDashboard />
+          <TherapistDashboard join={joinSession} />
         ) : profile.role === "admin" ? (
           <AdminDashboard />
         ) : (
-          <ClientDashboard go={go} join={(t) => { setTherapist(t); go("session"); }} />
+          <ClientDashboard go={go} join={joinSession} />
         )
       )}
-      {view === "session" && therapist && (
-        <SessionRoom therapist={therapist} end={() => go("dashboard")} />
+      {view === "session" && therapist && sessionBookingId && (
+        <SessionRoom therapist={therapist} bookingId={sessionBookingId} end={() => go("dashboard")} />
       )}
       {view === "login" && <Login go={go} />}
       {view === "signup" && <SignUp go={go} />}
