@@ -130,7 +130,10 @@ export function SessionRoom({ therapist: t, bookingId, end }: { therapist: Thera
           <span className="h-2 w-2 animate-pulse rounded-full bg-[#e5484d]" />
           <span className="font-heading text-sm">Live · {t.name}</span>
         </div>
-        <span className="flex items-center gap-1.5 font-heading text-xs text-[#b0aea5]"><ShieldCheck className="h-3.5 w-3.5 text-[#788c5d]" /> Encrypted</span>
+        <div className="flex items-center gap-4">
+          <span className="hidden font-heading text-xs text-[#b0aea5] sm:inline">In a crisis, call the Kenya Red Cross 1199 (toll-free)</span>
+          <span className="flex items-center gap-1.5 font-heading text-xs text-[#b0aea5]"><ShieldCheck className="h-3.5 w-3.5 text-[#788c5d]" /> Encrypted</span>
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1 gap-4 px-5 pb-4">

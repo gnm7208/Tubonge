@@ -11,10 +11,12 @@ import { SessionRoom } from "@/screens/SessionRoom";
 import { SignUp } from "@/screens/SignUp";
 import { Login } from "@/screens/Login";
 import { PaymentReturn } from "@/screens/PaymentReturn";
+import { PrivacyPolicy } from "@/screens/PrivacyPolicy";
+import { Terms } from "@/screens/Terms";
 import { Header } from "@/components/Header";
 import type { Therapist, Slot } from "@/data/mock";
 
-export type View = "landing" | "browse" | "profile" | "booking" | "dashboard" | "session" | "login" | "signup" | "payment-return";
+export type View = "landing" | "browse" | "profile" | "booking" | "dashboard" | "session" | "login" | "signup" | "payment-return" | "privacy" | "terms";
 
 function initialOrderTrackingId(): string | null {
   const params = new URLSearchParams(window.location.search);
@@ -77,6 +79,8 @@ function AppShell() {
       {view === "payment-return" && returningOrderTrackingId && (
         <PaymentReturn orderTrackingId={returningOrderTrackingId} go={go} />
       )}
+      {view === "privacy" && <PrivacyPolicy back={() => go("landing")} />}
+      {view === "terms" && <Terms back={() => go("landing")} />}
     </div>
   );
 }

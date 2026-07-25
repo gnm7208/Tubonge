@@ -2,6 +2,7 @@ import type { Therapist, Slot } from "@/data/mock";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { CrisisNotice } from "@/components/CrisisNotice";
 import { Star, ShieldCheck, Languages, Clock, ArrowLeft, GraduationCap, Quote } from "lucide-react";
 
 const REVIEWS = [
@@ -104,6 +105,8 @@ export function TherapistProfile({ therapist: t, onBook, back }: { therapist: Th
           </div>
         </aside>
       </div>
+
+      <CrisisNotice className="mt-6" />
     </div>
   );
 }

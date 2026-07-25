@@ -103,10 +103,16 @@ export function SignUp({ go }: { go: (v: View) => void }) {
           <Input id="password" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5 font-body" />
         </div>
 
-        <label className="flex items-start gap-2 text-xs text-muted-foreground">
-          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" />
-          I agree to the privacy policy and consent to my data being processed to provide therapy services, per Kenya's Data Protection Act.
-        </label>
+        <div className="flex items-start gap-2 text-xs text-muted-foreground">
+          <input id="consent" type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" />
+          <label htmlFor="consent">
+            I agree to the{" "}
+            <button type="button" onClick={(e) => { e.stopPropagation(); go("privacy"); }} className="underline hover:text-foreground">Privacy Policy</button>{" "}
+            and{" "}
+            <button type="button" onClick={(e) => { e.stopPropagation(); go("terms"); }} className="underline hover:text-foreground">Terms of Service</button>,
+            and consent to my data being processed to provide therapy services, per Kenya's Data Protection Act.
+          </label>
+        </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 

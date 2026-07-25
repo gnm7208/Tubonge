@@ -162,9 +162,13 @@ export function Landing({ go, openProfile }: { go: (v: View) => void; openProfil
           </div>
         </div>
         <div className="border-t border-white/10">
-          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-5 py-5 text-sm text-[#b0aea5] sm:flex-row">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-5 text-sm text-[#b0aea5] sm:flex-row">
             <span className="font-heading">Tubonge</span>
             <span>If you are in crisis, call the Kenya Red Cross line 1199 (toll-free).</span>
+            <div className="flex items-center gap-4">
+              <button onClick={() => go("privacy")} className="hover:text-white">Privacy</button>
+              <button onClick={() => go("terms")} className="hover:text-white">Terms</button>
+            </div>
           </div>
         </div>
       </section>

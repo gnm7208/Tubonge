@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { CrisisNotice } from "@/components/CrisisNotice";
 import { ArrowLeft, ShieldCheck, Smartphone, CreditCard, Landmark, Loader2, Clock } from "lucide-react";
 
 type Method = "mpesa" | "card" | "bank";
@@ -140,6 +141,8 @@ export function BookingScreen({ therapist: t, slot, setSlot, back }: {
           </p>
         </aside>
       </div>
+
+      <CrisisNotice className="mt-6" />
     </div>
   );
 }
