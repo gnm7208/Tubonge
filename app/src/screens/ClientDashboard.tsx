@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { slotLabel, initialsOf, accentFor } from "@/lib/therapists";
 import { canJoinSession } from "@/lib/sessionTiming";
 import { scoreBand } from "@/lib/checkIns";
-import type { CheckInRow } from "@/lib/database.types";
+import type { CheckInRow, WorksheetRow } from "@/lib/database.types";
 import { Sparkline } from "@/components/Sparkline";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -132,6 +132,84 @@ function MoodCard({ go }: { go: (v: View) => void }) {
         <Button onClick={() => go("check-in")} variant="outline" className="font-heading">Take a check-in</Button>
       </div>
     </div>
+  );
+}
+
+function MyWorksheets() {
+  const { profile } = useAuth();
+  const [worksheets, setWorksheets] = useState<WorksheetRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const load = () => {
+    if (!profile) return;
+    supabase
+      .from("worksheets")
+      .select("*")
+      .eq("client_id", profile.id)
+      .order("assigned_at", { ascending: false })
+      .then(({ data }) => {
+        const rows = (data as WorksheetRow[]) ?? [];
+        setWorksheets(rows);
+        setDrafts((prev) => {
+          const next = { ...prev };
+          for (const w of rows) if (!(w.id in next)) next[w.id] = w.client_response ?? "";
+          return next;
+        });
+        setLoading(false);
+      });
+  };
+
+  useEffect(load, [profile]);
+
+  const complete = async (w: WorksheetRow) => {
+    setSavingId(w.id);
+    await supabase
+      .from("worksheets")
+      .update({ client_response: drafts[w.id] ?? "", completed_at: new Date().toISOString() })
+      .eq("id", w.id);
+    setSavingId(null);
+    load();
+  };
+
+  if (loading || worksheets.length === 0) return null;
+
+  const sorted = [...worksheets].sort((a, b) => (a.completed_at ? 1 : 0) - (b.completed_at ? 1 : 0));
+
+  return (
+    <>
+      <h2 className="mt-8 font-heading text-lg font-semibold">Worksheets</h2>
+      <div className="mt-3 space-y-3">
+        {sorted.map((w) => (
+          <div key={w.id} className="rounded-xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between">
+              <p className="font-heading text-sm font-semibold">{w.title}</p>
+              <Badge className={`border-none font-heading text-xs ${w.completed_at ? "bg-[#788c5d]/15 text-[#4f6138]" : "bg-[#e8e6dc] text-[#141413]"}`}>
+                {w.completed_at ? "Completed" : "To do"}
+              </Badge>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">{w.prompt}</p>
+            {w.completed_at ? (
+              w.client_response && <p className="mt-2 text-sm">{w.client_response}</p>
+            ) : (
+              <>
+                <Textarea
+                  value={drafts[w.id] ?? ""}
+                  onChange={(e) => setDrafts((d) => ({ ...d, [w.id]: e.target.value }))}
+                  placeholder="Write your response…"
+                  className="mt-2 font-body"
+                  rows={3}
+                />
+                <Button size="sm" disabled={savingId === w.id} onClick={() => complete(w)} className="mt-2 bg-[#d97757] font-heading text-white hover:bg-[#c9663f]">
+                  {savingId === w.id ? "Saving…" : "Mark complete"}
+                </Button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -288,6 +366,8 @@ export function ClientDashboard({
       </div>
 
       <MyGroups joinGroup={joinGroup} />
+
+      <MyWorksheets />
 
       {/* Past */}
       {past.length > 0 && (

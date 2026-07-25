@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
-import type { TherapistRow, AvailabilitySlot, PayoutRow, CheckInRow, GroupSessionRow } from "@/lib/database.types";
+import type { TherapistRow, AvailabilitySlot, PayoutRow, CheckInRow, GroupSessionRow, WorksheetRow } from "@/lib/database.types";
 import { slotLabel, initialsOf, accentFor } from "@/lib/therapists";
 import { canJoinSession } from "@/lib/sessionTiming";
 import { scoreBand } from "@/lib/checkIns";
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Clock, CheckCircle2, XCircle, FileText, Upload, Plus, Trash2, CalendarPlus, Video, Banknote, Users, ChevronDown, HeartPulse, UsersRound } from "lucide-react";
+import { ShieldCheck, Clock, CheckCircle2, XCircle, FileText, Upload, Plus, Trash2, CalendarPlus, Video, Banknote, Users, ChevronDown, HeartPulse, UsersRound, NotebookPen } from "lucide-react";
 
 const GROUP_SESSION_MINUTES = 60;
 
@@ -441,7 +441,82 @@ function UpcomingSessions({ therapistId, join }: { therapistId: string; join: (t
 
 type ClientSummary = { client_id: string; full_name: string };
 
-function ClientDetail({ clientId }: { clientId: string }) {
+function AssignedWorksheets({ clientId, therapistId }: { clientId: string; therapistId: string }) {
+  const [worksheets, setWorksheets] = useState<WorksheetRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [title, setTitle] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    supabase
+      .from("worksheets")
+      .select("*")
+      .eq("client_id", clientId)
+      .eq("therapist_id", therapistId)
+      .order("assigned_at", { ascending: false })
+      .then(({ data }) => {
+        setWorksheets((data as WorksheetRow[]) ?? []);
+        setLoading(false);
+      });
+  };
+
+  useEffect(load, [clientId, therapistId]);
+
+  const assign = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !prompt.trim()) return;
+    setBusy(true);
+    setError(null);
+    const { error } = await supabase.from("worksheets").insert({ client_id: clientId, therapist_id: therapistId, title, prompt });
+    setBusy(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setTitle("");
+    setPrompt("");
+    load();
+  };
+
+  return (
+    <div className="mt-3 rounded-xl border border-border bg-[#faf9f5] p-4">
+      <p className="flex items-center gap-1.5 font-heading text-xs font-semibold text-muted-foreground"><NotebookPen className="h-3.5 w-3.5" /> Worksheets</p>
+
+      <form onSubmit={assign} className="mt-3 space-y-2">
+        <Input placeholder="Worksheet title" value={title} onChange={(e) => setTitle(e.target.value)} className="font-body" />
+        <Textarea placeholder="What should they reflect on or complete?" value={prompt} onChange={(e) => setPrompt(e.target.value)} className="font-body" rows={2} />
+        <Button type="submit" size="sm" disabled={busy} className="bg-[#788c5d] font-heading text-white hover:bg-[#788c5d]/90">
+          {busy ? "Assigning…" : "Assign worksheet"}
+        </Button>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </form>
+
+      <div className="mt-4 space-y-2">
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : worksheets.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No worksheets assigned yet.</p>
+        ) : (
+          worksheets.map((w) => (
+            <div key={w.id} className="rounded-lg border border-border bg-card px-3 py-2.5">
+              <div className="flex items-center justify-between">
+                <p className="font-heading text-sm font-semibold">{w.title}</p>
+                <Badge className={`border-none font-heading text-xs ${w.completed_at ? "bg-[#788c5d]/15 text-[#4f6138]" : "bg-[#e8e6dc] text-[#141413]"}`}>
+                  {w.completed_at ? "Completed" : "Assigned"}
+                </Badge>
+              </div>
+              {w.client_response && <p className="mt-1.5 text-sm text-muted-foreground">{w.client_response}</p>}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ClientDetail({ clientId, therapistId }: { clientId: string; therapistId: string }) {
   const [checkIns, setCheckIns] = useState<CheckInRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -478,6 +553,7 @@ function ClientDetail({ clientId }: { clientId: string }) {
           )}
         </div>
       )}
+      <AssignedWorksheets clientId={clientId} therapistId={therapistId} />
     </div>
   );
 }
@@ -523,7 +599,7 @@ function MyClients({ therapistId }: { therapistId: string }) {
                 <span className="font-heading text-sm font-semibold">{c.full_name}</span>
                 <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${openId === c.client_id ? "rotate-180" : ""}`} />
               </button>
-              {openId === c.client_id && <ClientDetail clientId={c.client_id} />}
+              {openId === c.client_id && <ClientDetail clientId={c.client_id} therapistId={therapistId} />}
             </div>
           ))
         )}

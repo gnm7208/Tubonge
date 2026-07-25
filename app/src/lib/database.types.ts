@@ -151,5 +151,16 @@ export type GroupSessionAttendeeRow = {
   joined_at: string;
 };
 
+export type WorksheetRow = {
+  id: string;
+  client_id: string;
+  therapist_id: string;
+  title: string;
+  prompt: string;
+  client_response: string | null;
+  assigned_at: string;
+  completed_at: string | null;
+};
+
 // Note: these Row types are used for local casting/typing (e.g. `data as TherapistRow`),
 // not fed into `createClient<Database>()` — see src/lib/supabase.ts for why.
