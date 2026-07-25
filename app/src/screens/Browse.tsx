@@ -1,13 +1,14 @@
 import { useState, useMemo, useEffect } from "react";
+import type { View } from "@/App";
 import { ALL_SPECIALTIES, ALL_LANGUAGES, type Therapist } from "@/data/mock";
 import { fetchApprovedTherapists } from "@/lib/therapists";
 import { TherapistCard } from "@/components/TherapistCard";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, Sparkles, ArrowRight } from "lucide-react";
 
-export function Browse({ openProfile, startBooking }: { openProfile: (t: Therapist) => void; startBooking: (t: Therapist) => void }) {
+export function Browse({ go, openProfile, startBooking }: { go: (v: View) => void; openProfile: (t: Therapist) => void; startBooking: (t: Therapist) => void }) {
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +41,16 @@ export function Browse({ openProfile, startBooking }: { openProfile: (t: Therapi
     <div className="mx-auto max-w-6xl px-5 py-10">
       <h1 className="font-heading text-3xl font-semibold tracking-tight">Find your therapist</h1>
       <p className="mt-1 text-muted-foreground">{therapists.length} licensed professionals available online.</p>
+
+      <button
+        onClick={() => go("match-quiz")}
+        className="mt-4 flex w-full items-center justify-between rounded-xl border border-[#d97757]/30 bg-[#d97757]/5 px-4 py-3 text-left transition-colors hover:border-[#d97757]/50"
+      >
+        <span className="flex items-center gap-2 font-heading text-sm font-medium">
+          <Sparkles className="h-4 w-4 text-[#d97757]" /> Not sure who to pick? Take our 1-minute match quiz.
+        </span>
+        <ArrowRight className="h-4 w-4 text-[#d97757]" />
+      </button>
 
       {/* Filters */}
       <div className="mt-6 rounded-2xl border border-border bg-card p-4">

@@ -57,11 +57,11 @@ export function Landing({ go, openProfile }: { go: (v: View) => void; openProfil
               M-Pesa, and meet by secure video — from wherever you are.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Button size="lg" onClick={() => go("browse")} className="bg-[#d97757] font-heading text-white hover:bg-[#c9663f]">
-                Find your therapist <ArrowRight className="ml-1 h-4 w-4" />
+              <Button size="lg" onClick={() => go("match-quiz")} className="bg-[#d97757] font-heading text-white hover:bg-[#c9663f]">
+                Get matched <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
               <Button size="lg" variant="outline" onClick={() => go("browse")} className="border-[#141413]/20 font-heading">
-                How it works
+                Browse all therapists
               </Button>
             </div>
             <div className="mt-8 flex items-center gap-6 text-sm text-muted-foreground">

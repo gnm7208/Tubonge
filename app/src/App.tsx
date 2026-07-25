@@ -13,10 +13,12 @@ import { Login } from "@/screens/Login";
 import { PaymentReturn } from "@/screens/PaymentReturn";
 import { PrivacyPolicy } from "@/screens/PrivacyPolicy";
 import { Terms } from "@/screens/Terms";
+import { MatchQuiz, type QuizAnswers } from "@/screens/MatchQuiz";
+import { MatchResults } from "@/screens/MatchResults";
 import { Header } from "@/components/Header";
 import type { Therapist, Slot } from "@/data/mock";
 
-export type View = "landing" | "browse" | "profile" | "booking" | "dashboard" | "session" | "login" | "signup" | "payment-return" | "privacy" | "terms";
+export type View = "landing" | "browse" | "profile" | "booking" | "dashboard" | "session" | "login" | "signup" | "payment-return" | "privacy" | "terms" | "match-quiz" | "match-results";
 
 function initialOrderTrackingId(): string | null {
   const params = new URLSearchParams(window.location.search);
@@ -29,6 +31,7 @@ function AppShell() {
   const [therapist, setTherapist] = useState<Therapist | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [sessionBookingId, setSessionBookingId] = useState<string | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<QuizAnswers | null>(null);
   const { loading, profile } = useAuth();
 
   const go = (v: View) => {
@@ -41,14 +44,14 @@ function AppShell() {
   const startBooking = (t: Therapist, s?: Slot) => { setTherapist(t); setSlot(s ?? null); go("booking"); };
   const joinSession = (t: Therapist, bookingId: string) => { setTherapist(t); setSessionBookingId(bookingId); go("session"); };
 
-  const showHeader = view !== "landing" && view !== "session" && view !== "login" && view !== "signup" && view !== "payment-return";
+  const showHeader = view !== "landing" && view !== "session" && view !== "login" && view !== "signup" && view !== "payment-return" && view !== "match-quiz";
 
   return (
     <div className="min-h-screen bg-background text-foreground font-body">
       {showHeader && <Header view={view} go={go} />}
 
       {view === "landing" && <Landing go={go} openProfile={openProfile} />}
-      {view === "browse" && <Browse openProfile={openProfile} startBooking={startBooking} />}
+      {view === "browse" && <Browse go={go} openProfile={openProfile} startBooking={startBooking} />}
       {view === "profile" && therapist && (
         <TherapistProfile therapist={therapist} onBook={(s) => startBooking(therapist, s)} back={() => go("browse")} />
       )}
@@ -81,6 +84,18 @@ function AppShell() {
       )}
       {view === "privacy" && <PrivacyPolicy back={() => go("landing")} />}
       {view === "terms" && <Terms back={() => go("landing")} />}
+      {view === "match-quiz" && (
+        <MatchQuiz back={() => go("landing")} onComplete={(a) => { setQuizAnswers(a); go("match-results"); }} />
+      )}
+      {view === "match-results" && quizAnswers && (
+        <MatchResults
+          answers={quizAnswers}
+          back={() => go("browse")}
+          retake={() => go("match-quiz")}
+          openProfile={openProfile}
+          startBooking={startBooking}
+        />
+      )}
     </div>
   );
 }
