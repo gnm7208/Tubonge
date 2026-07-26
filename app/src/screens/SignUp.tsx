@@ -14,6 +14,7 @@ export function SignUp({ go }: { go: (v: View) => void }) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [isYouth, setIsYouth] = useState(false);
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -27,7 +28,7 @@ export function SignUp({ go }: { go: (v: View) => void }) {
     }
     setSubmitting(true);
     setError(null);
-    const { error, needsEmailConfirmation } = await signUp({ fullName, email, phone, password, role });
+    const { error, needsEmailConfirmation } = await signUp({ fullName, email, phone, password, role, isYouth: role === "client" && isYouth });
     setSubmitting(false);
     if (error) {
       setError(error);
@@ -102,6 +103,13 @@ export function SignUp({ go }: { go: (v: View) => void }) {
           <Label htmlFor="password" className="font-heading text-sm">Password</Label>
           <Input id="password" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5 font-body" />
         </div>
+
+        {role === "client" && (
+          <div className="flex items-start gap-2 text-xs text-muted-foreground">
+            <input id="isYouth" type="checkbox" checked={isYouth} onChange={(e) => setIsYouth(e.target.checked)} className="mt-0.5" />
+            <label htmlFor="isYouth">I'm between 13–24 — get 50% off every session.</label>
+          </div>
+        )}
 
         <div className="flex items-start gap-2 text-xs text-muted-foreground">
           <input id="consent" type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" />

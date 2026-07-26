@@ -220,7 +220,7 @@ type BookingRow = {
   is_intro: boolean;
   therapists: { id: string; title: string; profiles: { full_name: string } | null } | null;
   availability_slots: { starts_at: string; ends_at: string } | null;
-  reviews: { id: string; rating: number; comment: string | null }[];
+  reviews: { id: string; rating: number; comment: string | null } | null;
 };
 
 function toTherapist(t: NonNullable<BookingRow["therapists"]>): Therapist {
@@ -379,7 +379,7 @@ export function ClientDashboard({
           <div className="mt-3 space-y-3">
             {past.map((b) => {
               const t = b.therapists ? toTherapist(b.therapists) : null;
-              const review = b.reviews[0];
+              const review = b.reviews;
               return (
                 <div key={b.id} className="rounded-xl border border-border bg-card p-4">
                   <div className="flex items-center justify-between">

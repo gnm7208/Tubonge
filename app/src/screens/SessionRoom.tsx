@@ -3,10 +3,11 @@ import DailyIframe, { type DailyCall } from "@daily-co/daily-js";
 import type { Therapist } from "@/data/mock";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { initialsOf, accentFor } from "@/lib/therapists";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PhoneOff, Send, ShieldCheck, Loader2, NotebookPen } from "lucide-react";
+import { PhoneOff, Send, ShieldCheck, Loader2, NotebookPen, Video, VideoOff } from "lucide-react";
 
 type Message = { id: string; sender_id: string; body: string; created_at: string };
 
@@ -34,6 +35,7 @@ export function SessionRoom({
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [notesSaving, setNotesSaving] = useState(false);
+  const [audioOnly, setAudioOnly] = useState(false);
 
   // Video: create/join the Daily room
   useEffect(() => {
@@ -136,6 +138,12 @@ export function SessionRoom({
     setNotesSaving(false);
   };
 
+  const toggleAudioOnly = async () => {
+    const next = !audioOnly;
+    setAudioOnly(next);
+    await callRef.current?.setLocalVideo(!next);
+  };
+
   const leave = async () => {
     if (bookingId) {
       // Idempotent: only flips confirmed -> completed once, whichever party leaves first.
@@ -172,6 +180,19 @@ export function SessionRoom({
             </div>
           )}
           <div ref={videoRef} className="h-full w-full" />
+          {status === "ready" && audioOnly && (
+            <div className="pointer-events-none absolute inset-0 grid place-items-center bg-[#141413]">
+              <div className="text-center">
+                <span
+                  className="mx-auto grid h-20 w-20 place-items-center rounded-full font-heading text-2xl font-semibold text-white"
+                  style={{ background: accentFor(profile?.id ?? "self") }}
+                >
+                  {initialsOf(profile?.full_name ?? "You")}
+                </span>
+                <p className="mt-3 font-heading text-sm text-[#b0aea5]">Audio-only mode — your video is paused to save data</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="hidden w-80 flex-col gap-4 md:flex">
@@ -207,7 +228,16 @@ export function SessionRoom({
         </div>
       </div>
 
-      <div className="flex items-center justify-center pb-6">
+      <div className="flex items-center justify-center gap-3 pb-6">
+        {status === "ready" && (
+          <Button
+            onClick={toggleAudioOnly}
+            variant="outline"
+            className="h-12 rounded-full border-white/20 bg-white/10 px-6 font-heading text-white hover:bg-white/20"
+          >
+            {audioOnly ? <><Video className="mr-2 h-5 w-5" /> Turn on video</> : <><VideoOff className="mr-2 h-5 w-5" /> Audio only</>}
+          </Button>
+        )}
         <Button onClick={leave} className="h-12 rounded-full bg-[#e5484d] px-6 font-heading hover:bg-[#d43b40]">
           <PhoneOff className="mr-2 h-5 w-5" /> Leave
         </Button>

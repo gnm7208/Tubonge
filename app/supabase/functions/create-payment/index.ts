@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       .single();
     if (tErr || !therapist) throw new Error("Therapist not found");
 
-    const { data: profile } = await admin.from("profiles").select("email, phone").eq("id", user.id).single();
+    const { data: profile } = await admin.from("profiles").select("email, phone, is_youth").eq("id", user.id).single();
 
     // Atomically hold the slot so two clients can't book the same one.
     const { data: heldSlot, error: holdErr } = await admin
@@ -81,7 +81,9 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (holdErr || !heldSlot) throw new Error("That slot was just taken -- please pick another time.");
 
-    const amount = therapist.session_rate_kes;
+    // Self-declared youth pricing (ages 13-24): 50% off, same trust boundary as the
+    // therapist-set session_rate_kes itself.
+    const amount = profile?.is_youth ? Math.round(therapist.session_rate_kes / 2) : therapist.session_rate_kes;
 
     const { data: booking, error: bookingErr } = await admin
       .from("bookings")

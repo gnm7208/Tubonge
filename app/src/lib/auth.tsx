@@ -9,6 +9,7 @@ type SignUpArgs = {
   phone: string;
   password: string;
   role: UserRole;
+  isYouth?: boolean;
 };
 
 type AuthContextValue = {
@@ -70,11 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [session?.user]);
 
-  const signUp = async ({ fullName, email, phone, password, role }: SignUpArgs) => {
+  const signUp = async ({ fullName, email, phone, password, role, isYouth }: SignUpArgs) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, phone, role } },
+      options: { data: { full_name: fullName, phone, role, is_youth: !!isYouth } },
     });
     return { error: error?.message ?? null, needsEmailConfirmation: !error && !data.session };
   };

@@ -34,6 +34,8 @@ export function BookingScreen({ therapist: t, slot, setSlot, back }: {
     );
   }
 
+  const displayRate = profile.is_youth ? Math.round(t.rate / 2) : t.rate;
+
   const pay = async () => {
     if (!slot) return;
     setSubmitting(true);
@@ -106,7 +108,7 @@ export function BookingScreen({ therapist: t, slot, setSlot, back }: {
 
           <Button onClick={pay} disabled={!slot || submitting} className="mt-6 w-full font-heading text-white sm:w-auto" style={{ background: METHODS.find((m) => m.id === method)!.color }}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {submitting ? "Starting checkout…" : `Continue to pay · KES ${t.rate.toLocaleString()}`}
+            {submitting ? "Starting checkout…" : `Continue to pay · KES ${displayRate.toLocaleString()}`}
           </Button>
           {!slot && <p className="mt-2 text-xs text-muted-foreground">Select a time to continue.</p>}
           <p className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -129,13 +131,20 @@ export function BookingScreen({ therapist: t, slot, setSlot, back }: {
             <div className="flex items-center justify-between"><span className="flex items-center gap-1.5 text-muted-foreground"><Clock className="h-3.5 w-3.5" /> Time</span><span className="font-heading">{slot?.label ?? "—"}</span></div>
             <div className="flex items-center justify-between"><span className="text-muted-foreground">Duration</span><span className="font-heading">50 min</span></div>
             <div className="flex items-center justify-between"><span className="text-muted-foreground">Method</span><span className="font-heading capitalize">{method === "mpesa" ? "M-Pesa" : method}</span></div>
-            <div className="flex items-center justify-between"><span className="text-muted-foreground">Session fee</span><span className="font-heading">KES {t.rate.toLocaleString()}</span></div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Session fee</span>
+              <span className="font-heading">
+                {profile.is_youth && <span className="mr-1.5 text-xs text-muted-foreground line-through">KES {t.rate.toLocaleString()}</span>}
+                KES {displayRate.toLocaleString()}
+              </span>
+            </div>
           </div>
           <Separator className="my-4" />
           <div className="flex items-center justify-between">
             <span className="font-heading font-semibold">Total</span>
-            <span className="font-heading text-lg font-semibold">KES {t.rate.toLocaleString()}</span>
+            <span className="font-heading text-lg font-semibold">KES {displayRate.toLocaleString()}</span>
           </div>
+          {profile.is_youth && <p className="mt-2 text-xs text-[#4f6138]">Youth discount applied (50% off, ages 13–24).</p>}
           <p className="mt-4 flex items-start gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#788c5d]" /> Payment is held securely. Free cancellation up to 12 hours before your session.
           </p>
