@@ -124,7 +124,7 @@ function GroupSessionManager({ therapistId, joinGroup }: { therapistId: string; 
             const joinable = canJoinSession(g.starts_at, g.ends_at);
             const t: Therapist = {
               id: g.id, name: g.title, title: "Group session", specialties: [], languages: [], years: 0, rate: 0,
-              rating: 0, reviews: 0, verified: false, bio: "", initials: initialsOf(g.title), accent: accentFor(g.id), nextSlots: [],
+              rating: 0, reviews: 0, verified: false, bio: "", initials: initialsOf(g.title), accent: accentFor(g.id), avatarUrl: null, nextSlots: [],
             };
             return (
               <div key={g.id} className="flex items-center justify-between rounded-xl border border-border bg-[#faf9f5] px-4 py-2.5">
@@ -416,7 +416,7 @@ function UpcomingSessions({ therapistId, join }: { therapistId: string; join: (t
             const name = b.profiles?.full_name ?? "Client";
             const clientAsTherapist: Therapist = {
               id: b.id, name, title: "Client", specialties: [], languages: [], years: 0, rate: 0,
-              rating: 0, reviews: 0, verified: false, bio: "", initials: initialsOf(name), accent: accentFor(b.id), nextSlots: [],
+              rating: 0, reviews: 0, verified: false, bio: "", initials: initialsOf(name), accent: accentFor(b.id), avatarUrl: null, nextSlots: [],
             };
             const joinable = b.availability_slots ? canJoinSession(b.availability_slots.starts_at, b.availability_slots.ends_at) : false;
             return (

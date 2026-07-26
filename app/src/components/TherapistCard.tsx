@@ -1,4 +1,5 @@
 import type { Therapist } from "@/data/mock";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Star, ShieldCheck, Languages } from "lucide-react";
@@ -7,9 +8,7 @@ export function TherapistCard({ t, onView, onBook }: { t: Therapist; onView: () 
   return (
     <div className="flex flex-col rounded-2xl border border-border bg-card p-5 transition-shadow hover:shadow-md">
       <div className="flex items-start gap-3">
-        <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full font-heading text-lg font-semibold text-white" style={{ background: t.accent }}>
-          {t.initials}
-        </span>
+        <PersonAvatar name={t.name} id={t.id} avatarUrl={t.avatarUrl} className="h-14 w-14 shrink-0 text-lg" />
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <p className="truncate font-heading font-semibold">{t.name}</p>

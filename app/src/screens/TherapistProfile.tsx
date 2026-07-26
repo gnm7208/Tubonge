@@ -3,6 +3,7 @@ import type { Therapist, Slot } from "@/data/mock";
 import type { View } from "@/App";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -73,9 +74,7 @@ export function TherapistProfile({
         {/* Main */}
         <div>
           <div className="flex items-start gap-4">
-            <span className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl font-heading text-2xl font-semibold text-white" style={{ background: t.accent }}>
-              {t.initials}
-            </span>
+            <PersonAvatar name={t.name} id={t.id} avatarUrl={t.avatarUrl} className="h-20 w-20 shrink-0 rounded-2xl text-2xl" />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-heading text-3xl font-semibold tracking-tight">{t.name}</h1>

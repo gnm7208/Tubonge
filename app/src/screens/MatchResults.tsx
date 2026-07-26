@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Therapist } from "@/data/mock";
 import type { QuizAnswers } from "@/screens/MatchQuiz";
 import { fetchApprovedTherapists } from "@/lib/therapists";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ShieldCheck, Languages, Sparkles } from "lucide-react";
@@ -64,7 +65,7 @@ export function MatchResults({ answers, back, retake, openProfile, startBooking 
           {results.map(({ t, matchedSpecialties, matchedLanguages }, i) => (
             <div key={t.id} className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-start gap-4">
-                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl font-heading text-lg font-semibold text-white" style={{ background: t.accent }}>{t.initials}</span>
+                <PersonAvatar name={t.name} id={t.id} avatarUrl={t.avatarUrl} className="h-14 w-14 shrink-0 rounded-2xl text-lg" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-heading font-semibold">{t.name}</p>

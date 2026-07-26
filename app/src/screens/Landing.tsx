@@ -74,7 +74,11 @@ export function Landing({ go, openProfile }: { go: (v: View) => void; openProfil
           <div className="relative">
             <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
               <div className="flex items-center gap-3">
-                <span className="grid h-12 w-12 place-items-center rounded-full bg-[#d97757] font-heading text-lg font-semibold text-white">AW</span>
+                <img
+                  src="https://api.dicebear.com/9.x/notionists/svg?seed=AminaWanjiru&backgroundColor=d97757"
+                  alt=""
+                  className="h-12 w-12 rounded-full bg-[#d97757]"
+                />
                 <div>
                   <p className="font-heading font-semibold">Dr. Amina Wanjiru</p>
                   <p className="text-sm text-muted-foreground">Clinical Psychologist</p>

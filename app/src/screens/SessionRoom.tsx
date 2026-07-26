@@ -3,7 +3,7 @@ import DailyIframe, { type DailyCall } from "@daily-co/daily-js";
 import type { Therapist } from "@/data/mock";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
-import { initialsOf, accentFor } from "@/lib/therapists";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -183,12 +183,12 @@ export function SessionRoom({
           {status === "ready" && audioOnly && (
             <div className="pointer-events-none absolute inset-0 grid place-items-center bg-[#141413]">
               <div className="text-center">
-                <span
-                  className="mx-auto grid h-20 w-20 place-items-center rounded-full font-heading text-2xl font-semibold text-white"
-                  style={{ background: accentFor(profile?.id ?? "self") }}
-                >
-                  {initialsOf(profile?.full_name ?? "You")}
-                </span>
+                <PersonAvatar
+                  name={profile?.full_name ?? "You"}
+                  id={profile?.id ?? "self"}
+                  avatarUrl={profile?.avatar_url}
+                  className="mx-auto h-20 w-20 text-2xl"
+                />
                 <p className="mt-3 font-heading text-sm text-[#b0aea5]">Audio-only mode — your video is paused to save data</p>
               </div>
             </div>

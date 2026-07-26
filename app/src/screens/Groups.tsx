@@ -46,7 +46,7 @@ export function Groups({ go, joinGroup }: { go: (v: View) => void; joinGroup: (t
     const id = g.therapists?.id ?? g.id;
     const t: Therapist = {
       id, name: g.title, title: g.therapists?.title || "Therapist", specialties: [], languages: [], years: 0, rate: 0,
-      rating: 0, reviews: 0, verified: true, bio: "", initials: initialsOf(facilitator), accent: accentFor(id), nextSlots: [],
+      rating: 0, reviews: 0, verified: true, bio: "", initials: initialsOf(facilitator), accent: accentFor(id), avatarUrl: null, nextSlots: [],
     };
     joinGroup(t, g.id);
   };

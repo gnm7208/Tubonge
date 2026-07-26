@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Therapist, Slot } from "@/data/mock";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -120,7 +121,7 @@ export function BookingScreen({ therapist: t, slot, setSlot, back }: {
         <aside className="h-fit rounded-2xl border border-border bg-card p-5">
           <p className="font-heading text-sm font-semibold text-muted-foreground">Summary</p>
           <div className="mt-3 flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-full font-heading text-sm font-semibold text-white" style={{ background: t.accent }}>{t.initials}</span>
+            <PersonAvatar name={t.name} id={t.id} avatarUrl={t.avatarUrl} className="h-11 w-11 text-sm" />
             <div>
               <p className="font-heading text-sm font-semibold">{t.name}</p>
               <p className="text-xs text-muted-foreground">{t.title}</p>

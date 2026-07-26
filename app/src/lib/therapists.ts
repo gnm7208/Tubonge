@@ -30,7 +30,7 @@ type TherapistQueryRow = {
   years_experience: number;
   session_rate_kes: number;
   title: string;
-  profiles: { full_name: string } | null;
+  profiles: { full_name: string; avatar_url: string | null } | null;
   availability_slots: { id: string; starts_at: string; status: string }[];
   reviews: { rating: number }[];
 };
@@ -60,6 +60,7 @@ function mapRow(row: TherapistQueryRow): Therapist {
     bio: row.bio ?? "",
     initials: initialsOf(name),
     accent: accentFor(row.id),
+    avatarUrl: row.profiles?.avatar_url ?? null,
     nextSlots,
   };
 }
@@ -68,7 +69,7 @@ export async function fetchApprovedTherapists(limit?: number): Promise<Therapist
   let query = supabase
     .from("therapists")
     .select(
-      "id, bio, specialties, languages, years_experience, session_rate_kes, title, profiles(full_name), availability_slots(id, starts_at, status), reviews(rating)"
+      "id, bio, specialties, languages, years_experience, session_rate_kes, title, profiles(full_name, avatar_url), availability_slots(id, starts_at, status), reviews(rating)"
     )
     .eq("verification_status", "approved")
     .order("created_at", { ascending: false });

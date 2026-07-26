@@ -8,6 +8,7 @@ import { canJoinSession } from "@/lib/sessionTiming";
 import { scoreBand } from "@/lib/checkIns";
 import type { CheckInRow, WorksheetRow } from "@/lib/database.types";
 import { Sparkline } from "@/components/Sparkline";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -71,7 +72,7 @@ function MyGroups({ joinGroup }: { joinGroup: (t: Therapist, groupSessionId: str
                 onClick={() => {
                   const t: Therapist = {
                     id, name: g.title, title: g.therapists?.title || "Therapist", specialties: [], languages: [], years: 0, rate: 0,
-                    rating: 0, reviews: 0, verified: true, bio: "", initials: initialsOf(name), accent: accentFor(id), nextSlots: [],
+                    rating: 0, reviews: 0, verified: true, bio: "", initials: initialsOf(name), accent: accentFor(id), avatarUrl: null, nextSlots: [],
                   };
                   joinGroup(t, g.id);
                 }}
@@ -218,7 +219,7 @@ type BookingRow = {
   therapist_id: string;
   status: string;
   is_intro: boolean;
-  therapists: { id: string; title: string; profiles: { full_name: string } | null } | null;
+  therapists: { id: string; title: string; profiles: { full_name: string; avatar_url: string | null } | null } | null;
   availability_slots: { starts_at: string; ends_at: string } | null;
   reviews: { id: string; rating: number; comment: string | null } | null;
 };
@@ -227,7 +228,8 @@ function toTherapist(t: NonNullable<BookingRow["therapists"]>): Therapist {
   const name = t.profiles?.full_name ?? "Therapist";
   return {
     id: t.id, name, title: t.title || "Therapist", specialties: [], languages: [], years: 0, rate: 0,
-    rating: 0, reviews: 0, verified: true, bio: "", initials: initialsOf(name), accent: accentFor(t.id), nextSlots: [],
+    rating: 0, reviews: 0, verified: true, bio: "", initials: initialsOf(name), accent: accentFor(t.id),
+    avatarUrl: t.profiles?.avatar_url ?? null, nextSlots: [],
   };
 }
 
@@ -280,7 +282,7 @@ export function ClientDashboard({
     if (!profile) return;
     supabase
       .from("bookings")
-      .select("id, therapist_id, status, is_intro, therapists(id, title, profiles(full_name)), availability_slots(starts_at, ends_at), reviews(id, rating, comment)")
+      .select("id, therapist_id, status, is_intro, therapists(id, title, profiles(full_name, avatar_url)), availability_slots(starts_at, ends_at), reviews(id, rating, comment)")
       .eq("client_id", profile.id)
       .in("status", ["pending_payment", "confirmed", "completed"])
       .order("created_at", { ascending: false })
@@ -331,7 +333,7 @@ export function ClientDashboard({
               <div key={b.id} className="rounded-2xl border border-border bg-card p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-4">
-                    <span className="grid h-14 w-14 place-items-center rounded-2xl font-heading text-lg font-semibold text-white" style={{ background: t?.accent }}>{t?.initials}</span>
+                    <PersonAvatar name={t?.name ?? "Therapist"} id={t?.id ?? "unknown"} avatarUrl={t?.avatarUrl} className="h-14 w-14 rounded-2xl text-lg" />
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-heading font-semibold">{t?.name}</p>
@@ -384,7 +386,7 @@ export function ClientDashboard({
                 <div key={b.id} className="rounded-xl border border-border bg-card p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="grid h-10 w-10 place-items-center rounded-full font-heading text-sm font-semibold text-white" style={{ background: t?.accent }}>{t?.initials}</span>
+                      <PersonAvatar name={t?.name ?? "Therapist"} id={t?.id ?? "unknown"} avatarUrl={t?.avatarUrl} className="h-10 w-10 text-sm" />
                       <div>
                         <p className="font-heading text-sm font-semibold">{t?.name}</p>
                         <p className="text-xs text-muted-foreground">

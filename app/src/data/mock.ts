@@ -14,6 +14,7 @@ export type Therapist = {
   bio: string;
   initials: string;
   accent: string; // brand accent hex
+  avatarUrl: string | null;
   nextSlots: Slot[];
 };
 
