@@ -217,6 +217,7 @@ type BookingRow = {
   id: string;
   therapist_id: string;
   status: string;
+  is_intro: boolean;
   therapists: { id: string; title: string; profiles: { full_name: string } | null } | null;
   availability_slots: { starts_at: string; ends_at: string } | null;
   reviews: { id: string; rating: number; comment: string | null }[];
@@ -279,7 +280,7 @@ export function ClientDashboard({
     if (!profile) return;
     supabase
       .from("bookings")
-      .select("id, therapist_id, status, therapists(id, title, profiles(full_name)), availability_slots(starts_at, ends_at), reviews(id, rating, comment)")
+      .select("id, therapist_id, status, is_intro, therapists(id, title, profiles(full_name)), availability_slots(starts_at, ends_at), reviews(id, rating, comment)")
       .eq("client_id", profile.id)
       .in("status", ["pending_payment", "confirmed", "completed"])
       .order("created_at", { ascending: false })
@@ -334,7 +335,9 @@ export function ClientDashboard({
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-heading font-semibold">{t?.name}</p>
-                        <Badge className="border-none bg-[#788c5d]/15 font-heading text-xs text-[#4f6138] hover:bg-[#788c5d]/15"><CheckCircle2 className="mr-1 h-3 w-3" /> Paid</Badge>
+                        <Badge className="border-none bg-[#788c5d]/15 font-heading text-xs text-[#4f6138] hover:bg-[#788c5d]/15">
+                          <CheckCircle2 className="mr-1 h-3 w-3" /> {b.is_intro ? "Free intro call" : "Paid"}
+                        </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">{t?.title}</p>
                       <p className="mt-1 flex items-center gap-1.5 font-heading text-sm">

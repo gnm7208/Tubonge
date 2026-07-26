@@ -57,6 +57,7 @@ export type BookingRow = {
   slot_id: string;
   status: BookingStatus;
   amount_kes: number;
+  is_intro: boolean;
   reminder_sent_at: string | null;
   created_at: string;
   updated_at: string;

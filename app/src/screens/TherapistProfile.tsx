@@ -1,9 +1,13 @@
+import { useEffect, useState } from "react";
 import type { Therapist, Slot } from "@/data/mock";
+import type { View } from "@/App";
+import { useAuth } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CrisisNotice } from "@/components/CrisisNotice";
-import { Star, ShieldCheck, Languages, Clock, ArrowLeft, GraduationCap, Quote } from "lucide-react";
+import { Star, ShieldCheck, Languages, Clock, ArrowLeft, GraduationCap, Quote, Sparkles } from "lucide-react";
 
 const REVIEWS = [
   { name: "Wanjiku M.", text: "I felt heard from the first session. Practical tools I actually use.", stars: 5 },
@@ -11,7 +15,54 @@ const REVIEWS = [
   { name: "Aisha O.", text: "Helped me through a really hard season. Highly recommend.", stars: 5 },
 ];
 
-export function TherapistProfile({ therapist: t, onBook, back }: { therapist: Therapist; onBook: (slot: Slot) => void; back: () => void }) {
+export function TherapistProfile({
+  therapist: t,
+  onBook,
+  back,
+  go,
+}: {
+  therapist: Therapist;
+  onBook: (slot: Slot) => void;
+  back: () => void;
+  go: (v: View) => void;
+}) {
+  const { profile } = useAuth();
+  const [introEligible, setIntroEligible] = useState(true);
+  const [introBusy, setIntroBusy] = useState(false);
+  const [introError, setIntroError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profile || profile.role !== "client") return;
+    supabase
+      .from("bookings")
+      .select("id")
+      .eq("client_id", profile.id)
+      .eq("therapist_id", t.id)
+      .eq("is_intro", true)
+      .maybeSingle()
+      .then(({ data }) => setIntroEligible(!data));
+  }, [profile, t.id]);
+
+  const bookIntro = async () => {
+    if (!profile) {
+      go("login");
+      return;
+    }
+    const slot = t.nextSlots[0];
+    if (!slot) return;
+    setIntroBusy(true);
+    setIntroError(null);
+    const { data, error } = await supabase.functions.invoke("book-intro-call", { body: { slotId: slot.id } });
+    setIntroBusy(false);
+    if (error || data?.error) {
+      setIntroError(data?.error ?? error?.message ?? "Could not book the intro call.");
+      return;
+    }
+    go("dashboard");
+  };
+
+  const showIntro = (!profile || profile.role === "client") && introEligible;
+
   return (
     <div className="mx-auto max-w-6xl px-5 py-8">
       <Button variant="ghost" onClick={back} className="mb-4 font-heading text-muted-foreground">
@@ -99,6 +150,17 @@ export function TherapistProfile({ therapist: t, onBook, back }: { therapist: Th
             <Button onClick={() => onBook(t.nextSlots[0])} disabled={t.nextSlots.length === 0} className="mt-4 w-full bg-[#d97757] font-heading text-white hover:bg-[#c9663f]">
               Book a session
             </Button>
+            {showIntro && (
+              <Button
+                onClick={bookIntro}
+                disabled={t.nextSlots.length === 0 || introBusy}
+                variant="outline"
+                className="mt-2 w-full font-heading"
+              >
+                <Sparkles className="mr-1.5 h-4 w-4 text-[#d97757]" /> {introBusy ? "Booking…" : "Free 15-min intro call"}
+              </Button>
+            )}
+            {introError && <p className="mt-2 text-sm text-destructive">{introError}</p>}
             <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
               <ShieldCheck className="h-3.5 w-3.5 text-[#788c5d]" /> Secure M-Pesa payment · free cancellation 12h before
             </p>

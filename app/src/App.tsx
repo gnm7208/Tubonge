@@ -57,7 +57,7 @@ function AppShell() {
       {view === "landing" && <Landing go={go} openProfile={openProfile} />}
       {view === "browse" && <Browse go={go} openProfile={openProfile} startBooking={startBooking} />}
       {view === "profile" && therapist && (
-        <TherapistProfile therapist={therapist} onBook={(s) => startBooking(therapist, s)} back={() => go("browse")} />
+        <TherapistProfile therapist={therapist} onBook={(s) => startBooking(therapist, s)} back={() => go("browse")} go={go} />
       )}
       {view === "booking" && therapist && (
         <BookingScreen therapist={therapist} slot={slot} setSlot={setSlot} onPaid={() => go("dashboard")} back={() => go("profile")} />
