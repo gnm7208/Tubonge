@@ -68,6 +68,10 @@ Deno.serve(async (req) => {
       throw new Error(bookingErr.message);
     }
 
+    // Unlike the paid flow (where pesapal-ipn flips held -> booked on payment success), there's
+    // no webhook here -- the booking is already confirmed, so mark the slot booked immediately.
+    await admin.from("availability_slots").update({ status: "booked" }).eq("id", slotId);
+
     return new Response(JSON.stringify({ booking_id: booking.id }), { headers: { ...cors, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
